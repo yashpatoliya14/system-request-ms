@@ -1,178 +1,295 @@
 "use client";
-import React, { useState } from 'react';
-import { 
-  Users, UserCheck, ClipboardList, 
-  ArrowUpRight, CheckCircle, Clock, 
-  UserPlus, Search, Filter, X, AlertCircle
-} from 'lucide-react';
+
+import React, { useState } from "react";
+import {
+  Users,
+  UserCheck,
+  Clock,
+  UserPlus,
+  Search,
+  Filter,
+  X,
+  AlertCircle,
+  CheckCircle,
+  ArrowUpRight,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+
+interface Request {
+  id: string;
+  subject: string;
+  requester: string;
+  priority: string;
+  status: string;
+  date: string;
+  technician: string | null;
+}
+
+interface Technician {
+  id: number;
+  name: string;
+  expertise: string;
+}
 
 export default function HODDashboard() {
-  // 1. Sample Requests Data
-  const [requests, setRequests] = useState([
-    { id: 'SR-3001', subject: 'Network Switch Failure', requester: 'John Doe', priority: 'High', status: 'Unassigned', date: '13 Jan 2026', technician: null },
-    { id: 'SR-3002', subject: 'New PC Setup', requester: 'Jane Smith', priority: 'Medium', status: 'Assigned', date: '12 Jan 2026', technician: 'Rahul (Tech)' },
-    { id: 'SR-3003', subject: 'ERP Access Issue', requester: 'Mike Ross', priority: 'High', status: 'Unassigned', date: '13 Jan 2026', technician: null },
+  const [requests, setRequests] = useState<Request[]>([
+    {
+      id: "SR-3001",
+      subject: "Network Switch Failure",
+      requester: "John Doe",
+      priority: "High",
+      status: "Unassigned",
+      date: "13 Jan 2026",
+      technician: null,
+    },
+    {
+      id: "SR-3002",
+      subject: "New PC Setup",
+      requester: "Jane Smith",
+      priority: "Medium",
+      status: "Assigned",
+      date: "12 Jan 2026",
+      technician: "Rahul (Tech)",
+    },
+    {
+      id: "SR-3003",
+      subject: "ERP Access Issue",
+      requester: "Mike Ross",
+      priority: "High",
+      status: "Unassigned",
+      date: "13 Jan 2026",
+      technician: null,
+    },
   ]);
 
-  // 2. Technicians List
-  const [technicians] = useState([
-    { id: 1, name: 'Rahul Sharma', expertise: 'Hardware' },
-    { id: 2, name: 'Amit Patel', expertise: 'Network' },
-    { id: 3, name: 'Suresh Varma', expertise: 'Software' },
+  const [technicians] = useState<Technician[]>([
+    { id: 1, name: "Rahul Sharma", expertise: "Hardware" },
+    { id: 2, name: "Amit Patel", expertise: "Network" },
+    { id: 3, name: "Suresh Varma", expertise: "Software" },
   ]);
 
-  const [selectedRequest, setSelectedRequest] = useState<any>(null);
+  const [selectedRequest, setSelectedRequest] = useState<Request | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   const handleAssign = (techName: string) => {
-    setRequests(requests.map(req => 
-      req.id === selectedRequest.id 
-      ? { ...req, status: 'Assigned', technician: techName } 
-      : req
-    ));
+    setRequests(
+      requests.map((req) =>
+        req.id === selectedRequest?.id
+          ? { ...req, status: "Assigned", technician: techName }
+          : req
+      )
+    );
     setIsAssignModalOpen(false);
   };
 
+  const stats = [
+    {
+      label: "Unassigned",
+      count: requests.filter((r) => r.status === "Unassigned").length,
+      icon: AlertCircle,
+      color: "text-rose-600",
+      bg: "bg-rose-50",
+      border: "border-rose-200",
+    },
+    {
+      label: "In Progress",
+      count: requests.filter((r) => r.status === "Assigned").length,
+      icon: Clock,
+      color: "text-blue-600",
+      bg: "bg-blue-50",
+      border: "border-blue-200",
+    },
+    {
+      label: "Technicians",
+      count: technicians.length,
+      icon: UserCheck,
+      color: "text-emerald-600",
+      bg: "bg-emerald-50",
+      border: "border-emerald-200",
+    },
+  ];
+
   return (
-    <div className="space-y-8 min-h-screen">
+    <div className="space-y-8">
       {/* Header Section */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-slate-900 flex items-center gap-3">
-            <Users className="text-blue-600" size={32} /> HOD Control Center
-          </h1>
-          <p className="text-slate-500 font-medium italic">Department: IT & Infrastructure</p>
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Users className="h-5 w-5" />
+            </div>
+            <h1 className="text-3xl font-bold tracking-tight">HOD Control Center</h1>
+          </div>
+          <p className="text-muted-foreground">
+            Department: <span className="font-medium text-foreground">IT & Infrastructure</span>
+          </p>
         </div>
       </div>
 
-      {/* Stats Quick View */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {[
-          { label: 'Unassigned', count: requests.filter(r => r.status === 'Unassigned').length, color: 'text-red-600', bg: 'bg-red-50', icon: AlertCircle },
-          { label: 'In Progress', count: requests.filter(r => r.status === 'Assigned').length, color: 'text-blue-600', bg: 'bg-blue-50', icon: Clock },
-          { label: 'Technicians', count: technicians.length, color: 'text-emerald-600', bg: 'bg-emerald-50', icon: UserCheck },
-        ].map((stat, i) => (
-          <div key={i} className={`${stat.bg} p-6 rounded-[32px] border border-white shadow-sm flex items-center justify-between`}>
-            <div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{stat.label}</p>
-              <h3 className={`text-3xl font-black ${stat.color}`}>{stat.count}</h3>
-            </div>
-            <div className={`p-4 rounded-2xl bg-white/50 ${stat.color}`}>
-               <stat.icon size={24} />
-            </div>
-          </div>
+      {/* Stats Grid */}
+      <div className="grid gap-4 md:grid-cols-3">
+        {stats.map((stat, i) => (
+          <Card key={i} className={`${stat.bg} ${stat.border} transition-all duration-300 hover:shadow-md`}>
+            <CardContent className="flex items-center justify-between p-6">
+              <div className="space-y-1">
+                <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                  {stat.label}
+                </p>
+                <p className={`text-3xl font-bold ${stat.color}`}>{stat.count}</p>
+              </div>
+              <div className={`rounded-2xl bg-white/80 p-4 ${stat.color}`}>
+                <stat.icon className="h-6 w-6" />
+              </div>
+            </CardContent>
+          </Card>
         ))}
       </div>
 
-      {/* Main Request Management Table */}
-      <div className="bg-white rounded-[40px] border border-slate-100 shadow-sm overflow-hidden">
-        <div className="p-8 border-b border-slate-50 flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h2 className="text-xl font-black text-slate-800">Pending Assignments</h2>
-          <div className="flex gap-2 w-full sm:w-auto">
-            <div className="relative flex-1 sm:flex-none">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
-              <input type="text" placeholder="Search..." className="pl-10 pr-4 py-2 bg-slate-50 rounded-xl text-sm font-bold outline-none border border-transparent focus:border-blue-500/20 w-full" />
+      {/* Request Table */}
+      <Card>
+        <CardHeader className="border-b">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <CardTitle>Pending Assignments</CardTitle>
+            <div className="flex gap-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input placeholder="Search..." className="w-48 pl-9" />
+              </div>
+              <Button variant="outline" size="icon">
+                <Filter className="h-4 w-4" />
+              </Button>
             </div>
-            <button className="p-2 bg-slate-50 rounded-xl text-slate-400 hover:text-blue-600 transition-colors border border-slate-100"><Filter size={20}/></button>
           </div>
-        </div>
-
-        <div className="overflow-x-auto">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50/50 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-              <tr>
-                <th className="px-8 py-5">Issue Details</th>
-                <th className="px-8 py-5">Requester</th>
-                <th className="px-8 py-5">Priority</th>
-                <th className="px-8 py-5">Assigned Tech</th>
-                <th className="px-8 py-5 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
+        </CardHeader>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Issue Details</TableHead>
+                <TableHead className="font-semibold">Requester</TableHead>
+                <TableHead className="font-semibold">Priority</TableHead>
+                <TableHead className="font-semibold">Assigned Tech</TableHead>
+                <TableHead className="text-right font-semibold">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {requests.map((req) => (
-                <tr key={req.id} className="hover:bg-slate-50/30 transition-colors group">
-                  <td className="px-8 py-6">
-                    <div className="flex flex-col">
-                      <span className="text-[10px] font-black text-blue-600 mb-1">{req.id}</span>
-                      <span className="font-bold text-slate-800">{req.subject}</span>
+                <TableRow key={req.id} className="group">
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Badge variant="outline" className="font-mono text-xs">
+                        {req.id}
+                      </Badge>
+                      <p className="font-medium">{req.subject}</p>
                     </div>
-                  </td>
-                  <td className="px-8 py-6 text-sm font-bold text-slate-600">{req.requester}</td>
-                  <td className="px-8 py-6">
-                    <span className={`px-3 py-1 rounded-full text-[10px] font-black uppercase ${
-                      req.priority === 'High' ? 'bg-red-50 text-red-600' : 'bg-blue-50 text-blue-600'
-                    }`}>
+                  </TableCell>
+                  <TableCell className="font-medium text-muted-foreground">
+                    {req.requester}
+                  </TableCell>
+                  <TableCell>
+                    <Badge
+                      className={
+                        req.priority === "High"
+                          ? "bg-rose-100 text-rose-700 hover:bg-rose-100"
+                          : "bg-blue-100 text-blue-700 hover:bg-blue-100"
+                      }
+                    >
                       {req.priority}
-                    </span>
-                  </td>
-                  <td className="px-8 py-6">
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
                     {req.technician ? (
-                      <span className="text-sm font-bold text-emerald-600 flex items-center gap-2">
-                        <CheckCircle size={14} /> {req.technician}
-                      </span>
+                      <div className="flex items-center gap-2 text-emerald-600">
+                        <CheckCircle className="h-4 w-4" />
+                        <span className="font-medium">{req.technician}</span>
+                      </div>
                     ) : (
-                      <span className="text-sm font-bold text-slate-300 italic">Not Assigned</span>
+                      <span className="italic text-muted-foreground">Not Assigned</span>
                     )}
-                  </td>
-                  <td className="px-8 py-6 text-right">
+                  </TableCell>
+                  <TableCell className="text-right">
                     {!req.technician ? (
-                      <button 
-                        onClick={() => { setSelectedRequest(req); setIsAssignModalOpen(true); }}
-                        className="bg-slate-900 text-white px-5 py-3 rounded-2xl text-[10px] font-black uppercase hover:bg-blue-600 transition-all flex items-center gap-2 ml-auto shadow-lg shadow-slate-100"
+                      <Button
+                        size="sm"
+                        className="gap-1"
+                        onClick={() => {
+                          setSelectedRequest(req);
+                          setIsAssignModalOpen(true);
+                        }}
                       >
-                        <UserPlus size={14} /> Assign
-                      </button>
+                        <UserPlus className="h-3 w-3" />
+                        Assign
+                      </Button>
                     ) : (
-                      <button className="p-3 text-slate-300 hover:text-blue-600 hover:bg-blue-50 rounded-xl transition-all">
-                        <ArrowUpRight size={20} />
-                      </button>
+                      <Button variant="ghost" size="icon" className="opacity-50 group-hover:opacity-100">
+                        <ArrowUpRight className="h-4 w-4" />
+                      </Button>
                     )}
-                  </td>
-                </tr>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
 
       {/* Assignment Modal */}
-      {isAssignModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-md flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-md rounded-[45px] p-10 space-y-6 shadow-2xl">
-            <div className="flex justify-between items-center border-b pb-6">
-              <div>
-                <h2 className="text-2xl font-black text-slate-900">Assign Technician</h2>
-                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Ticket: {selectedRequest?.id}</p>
-              </div>
-              <button onClick={() => setIsAssignModalOpen(false)} className="bg-slate-50 p-2 rounded-full text-slate-300 hover:text-red-500 transition-colors">
-                <X size={24} />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-2">Select Expert</label>
-              {technicians.map((tech) => (
-                <button 
-                  key={tech.id}
-                  onClick={() => handleAssign(tech.name)}
-                  className="w-full flex items-center justify-between p-5 bg-slate-50 rounded-[28px] border-2 border-transparent hover:border-blue-500/20 hover:bg-white hover:shadow-xl hover:shadow-blue-500/5 transition-all group"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-blue-600 font-black shadow-sm group-hover:bg-blue-600 group-hover:text-white transition-colors">
+      <Dialog open={isAssignModalOpen} onOpenChange={setIsAssignModalOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Assign Technician</DialogTitle>
+            <DialogDescription>
+              Ticket: <span className="font-mono font-semibold">{selectedRequest?.id}</span>
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Select Expert
+            </p>
+            {technicians.map((tech) => (
+              <button
+                key={tech.id}
+                onClick={() => handleAssign(tech.name)}
+                className="group flex w-full items-center justify-between rounded-xl border bg-muted/30 p-4 transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md"
+              >
+                <div className="flex items-center gap-4">
+                  <Avatar className="h-12 w-12 border-2 border-primary/10 transition-colors group-hover:border-primary/30">
+                    <AvatarFallback className="bg-primary/10 font-semibold text-primary group-hover:bg-primary group-hover:text-primary-foreground">
                       {tech.name.charAt(0)}
-                    </div>
-                    <div className="text-left">
-                      <p className="font-black text-slate-800">{tech.name}</p>
-                      <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tighter">{tech.expertise} Specialization</p>
-                    </div>
+                    </AvatarFallback>
+                  </Avatar>
+                  <div className="text-left">
+                    <p className="font-semibold">{tech.name}</p>
+                    <p className="text-xs text-muted-foreground">
+                      {tech.expertise} Specialization
+                    </p>
                   </div>
-                  <UserPlus className="text-slate-300 group-hover:text-blue-600 transition-colors" size={20} />
-                </button>
-              ))}
-            </div>
+                </div>
+                <UserPlus className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />
+              </button>
+            ))}
           </div>
-        </div>
-      )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

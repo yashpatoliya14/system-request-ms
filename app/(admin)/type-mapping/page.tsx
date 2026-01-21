@@ -1,139 +1,195 @@
 "use client";
-import React, { useState } from 'react';
-import { Plus, GitMerge, Search, User, Settings, Trash2, CheckCircle, ArrowRight } from 'lucide-react';
+
+import React, { useState } from "react";
+import { Plus, GitMerge, Search, User, Settings, Trash2, CheckCircle, ArrowRight } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function AutoAssignmentMaster() {
   const [isModalOpen, setIsModalOpen] = useState(false);
 
-  // Mock Data
   const mappingList = [
-    { id: 1, requestType: 'New Laptop Request', technician: 'Rajesh Kumar', dept: 'IT Support', active: true },
-    { id: 2, requestType: 'Email Password Reset', technician: 'Suresh Mehta', dept: 'IT Support', active: true },
-    { id: 3, requestType: 'A/C Repair', technician: 'Amit Patel', dept: 'Maintenance', active: false },
+    { id: 1, requestType: "New Laptop Request", technician: "Rajesh Kumar", dept: "IT Support", active: true },
+    { id: 2, requestType: "Email Password Reset", technician: "Suresh Mehta", dept: "IT Support", active: true },
+    { id: 3, requestType: "A/C Repair", technician: "Amit Patel", dept: "Maintenance", active: false },
+    { id: 4, requestType: "Network Issue", technician: "Vijay Shah", dept: "IT Support", active: true },
   ];
 
   return (
     <div className="space-y-6">
-      {/* Header Area */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-            <GitMerge className="text-blue-600" /> Auto Assignment Master
-          </h1>
-          <p className="text-slate-500 text-sm">Link specific request types to dedicated technicians</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-blue-100 transition-all"
-        >
-          <Plus size={20} /> Create New Mapping
-        </button>
-      </div>
-
-      {/* Filter Section */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-100 shadow-sm flex flex-wrap gap-4">
-        <div className="relative flex-1 min-w-[300px]">
-          <Search className="absolute left-3 top-3 text-slate-400" size={18} />
-          <input 
-            type="text" 
-            placeholder="Search by request type or staff..." 
-            className="w-full pl-11 pr-4 py-2.5 bg-slate-50 border border-slate-200 rounded-xl outline-none focus:ring-4 ring-blue-500/5 transition-all"
-          />
-        </div>
-      </div>
-
-      {/* Mapping Table */}
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-slate-500 text-[11px] uppercase font-black tracking-widest border-b border-slate-100">
-            <tr>
-              <th className="px-8 py-5">Service Request Type</th>
-              <th className="px-8 py-5 text-center">Auto-Assign To</th>
-              <th className="px-8 py-5 text-center">Status</th>
-              <th className="px-8 py-5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {mappingList.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/50 transition-colors group">
-                <td className="px-8 py-5">
-                  <div className="flex items-center gap-2">
-                    <div className="p-2 bg-blue-50 rounded-lg text-blue-600">
-                      <Settings size={16} />
-                    </div>
-                    <div>
-                      <div className="font-bold text-slate-800">{item.requestType}</div>
-                      <div className="text-[10px] text-slate-400 font-bold uppercase">{item.dept}</div>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-8 py-5">
-                  <div className="flex items-center justify-center gap-3">
-                    <ArrowRight className="text-slate-300" size={16} />
-                    <div className="flex items-center gap-2 bg-slate-100 px-3 py-1.5 rounded-xl">
-                      <User size={14} className="text-slate-500" />
-                      <span className="text-sm font-bold text-slate-700">{item.technician}</span>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-8 py-5 text-center">
-                  <div className="flex justify-center">
-                    {item.active ? (
-                      <span className="flex items-center gap-1 text-green-600 text-[10px] font-black uppercase tracking-tighter">
-                        <CheckCircle size={12} /> Live
-                      </span>
-                    ) : (
-                      <span className="text-slate-300 text-[10px] font-black uppercase">Inactive</span>
-                    )}
-                  </div>
-                </td>
-                <td className="px-8 py-5 text-right">
-                  <button className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
-                    <Trash2 size={18} />
-                  </button>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Modal - Mapping Form */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-lg rounded-[32px] shadow-2xl p-10 space-y-6 border border-white">
-            <h2 className="text-2xl font-black text-slate-800">New Auto-Assignment</h2>
-            
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Select Request Type</label>
-                <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 ring-blue-500/10 transition-all font-bold">
-                  <option>New Laptop Request</option>
-                  <option>Email Issues</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[11px] font-bold text-slate-400 uppercase tracking-widest ml-1">Select Technician</label>
-                <select className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 ring-blue-500/10 transition-all font-bold">
-                  <option>Rajesh Kumar (IT Support)</option>
-                  <option>Suresh Mehta (IT Support)</option>
-                </select>
-              </div>
-
-              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-2xl">
-                <input type="checkbox" id="isActive" defaultChecked className="w-5 h-5 accent-blue-600" />
-                <label htmlFor="isActive" className="text-sm font-bold text-slate-600">Enable this mapping immediately</label>
-              </div>
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <GitMerge className="h-5 w-5" />
             </div>
-
-            <div className="flex gap-4 pt-4">
-              <button className="flex-1 bg-blue-600 text-white font-bold py-4 rounded-2xl shadow-xl shadow-blue-100 transition-transform active:scale-95">Link Technician</button>
-              <button onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-50 text-slate-400 font-bold py-4 rounded-2xl">Cancel</button>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Auto Assignment Master</h1>
           </div>
+          <p className="text-muted-foreground">
+            Link specific request types to dedicated technicians
+          </p>
         </div>
-      )}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2 shadow-lg shadow-primary/25">
+              <Plus className="h-4 w-4" />
+              Create New Mapping
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[500px]">
+            <DialogHeader>
+              <DialogTitle>New Auto-Assignment</DialogTitle>
+              <DialogDescription>
+                Link a request type to a technician for automatic assignment.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Select Request Type</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose request type..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="laptop">New Laptop Request</SelectItem>
+                    <SelectItem value="email">Email Issues</SelectItem>
+                    <SelectItem value="network">Network Problem</SelectItem>
+                    <SelectItem value="ac">A/C Repair</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Select Technician</Label>
+                <Select>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose technician..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="rajesh">Rajesh Kumar (IT Support)</SelectItem>
+                    <SelectItem value="suresh">Suresh Mehta (IT Support)</SelectItem>
+                    <SelectItem value="amit">Amit Patel (Maintenance)</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-4">
+                <input type="checkbox" id="isActive" defaultChecked className="h-4 w-4 accent-primary" />
+                <label htmlFor="isActive" className="text-sm font-medium">
+                  Enable this mapping immediately
+                </label>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button className="flex-1">Link Technician</Button>
+                <Button variant="outline" className="flex-1" onClick={() => setIsModalOpen(false)}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Filter Bar */}
+      <Card>
+        <CardContent className="flex items-center gap-4 p-4">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+            <Input placeholder="Search by request type or staff..." className="pl-10" />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Service Request Type</TableHead>
+                <TableHead className="font-semibold text-center">Auto-Assign To</TableHead>
+                <TableHead className="font-semibold text-center">Status</TableHead>
+                <TableHead className="text-right font-semibold">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {mappingList.map((item) => (
+                <TableRow key={item.id} className="group">
+                  <TableCell>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                        <Settings className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <p className="font-medium">{item.requestType}</p>
+                        <p className="text-xs text-muted-foreground">{item.dept}</p>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center justify-center gap-3">
+                      <ArrowRight className="h-4 w-4 text-muted-foreground/50" />
+                      <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-1.5">
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {item.technician.split(" ").map((n) => n[0]).join("")}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm font-medium">{item.technician}</span>
+                      </div>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-center">
+                    {item.active ? (
+                      <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                        <CheckCircle className="h-3 w-3" />
+                        Live
+                      </Badge>
+                    ) : (
+                      <Badge variant="secondary">Inactive</Badge>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }

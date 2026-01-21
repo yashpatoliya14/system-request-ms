@@ -1,14 +1,14 @@
 "use client";
-import React from 'react';
-import AdminSidebar from "@/components/adminSidebar";
 
+import React from "react";
+import AppSidebar from "@/components/AppSidebar";
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <div className="flex min-h-screen bg-[#f5f7ff]">
-      <AdminSidebar />
-      <main className="flex-1 ml-64 min-h-screen">
-        <div className="p-8 lg:p-12">
+    <div className="flex min-h-screen bg-background">
+      <AppSidebar variant="admin" />
+      <main className="ml-64 flex-1">
+        <div className="container max-w-7xl p-6 lg:p-8">
           {children}
         </div>
       </main>

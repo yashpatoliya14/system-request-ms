@@ -1,75 +1,101 @@
 "use client";
-import React, { useState } from 'react';
-import { 
-  Settings2, Plus, Edit2, 
-  Trash2, X, Save 
-} from 'lucide-react';
+
+import React, { useState } from "react";
+import { Settings2, Plus, Edit2, Trash2, Save, Clock } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 export default function ServiceTypeMaster() {
-  // 1. Departments State (Dropdown માટે)
   const [departments] = useState([
-    { id: 1, name: 'IT Support' },
-    { id: 2, name: 'Electrical' },
-    { id: 3, name: 'Maintenance' },
+    { id: 1, name: "IT Support" },
+    { id: 2, name: "Electrical" },
+    { id: 3, name: "Maintenance" },
   ]);
 
-  // 2. Service Types Main State
   const [serviceTypes, setServiceTypes] = useState([
-    { id: 1, deptId: 1, name: 'Hardware Repair', days: 2, status: 'Active' },
-    { id: 2, deptId: 1, name: 'Software Installation', days: 1, status: 'Active' },
-    { id: 3, deptId: 2, name: 'Wiring Issue', days: 3, status: 'Active' },
+    { id: 1, deptId: 1, name: "Hardware Repair", days: 2, status: "Active" },
+    { id: 2, deptId: 1, name: "Software Installation", days: 1, status: "Active" },
+    { id: 3, deptId: 2, name: "Wiring Issue", days: 3, status: "Active" },
+    { id: 4, deptId: 3, name: "AC Maintenance", days: 2, status: "Active" },
   ]);
 
-  // 3. Form & Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editId, setEditId] = useState<number | null>(null);
   const [formData, setFormData] = useState({
-    deptId: '',
-    name: '',
-    days: 1 as any,
-    status: 'Active'
+    deptId: "",
+    name: "",
+    days: 1,
+    status: "Active",
   });
-
-  // --- CRUD Functions ---
 
   const handleSave = () => {
     if (!formData.deptId || !formData.name) {
-      alert("Please fill all fields");
       return;
     }
 
     if (editId !== null) {
-      // Update
-      setServiceTypes(serviceTypes.map(st => 
-        st.id === editId ? { ...st, deptId: Number(formData.deptId), name: formData.name, days: formData.days, status: formData.status } : st
-      ));
+      setServiceTypes(
+        serviceTypes.map((st) =>
+          st.id === editId
+            ? { ...st, deptId: Number(formData.deptId), name: formData.name, days: formData.days, status: formData.status }
+            : st
+        )
+      );
     } else {
-      // Create
-      const newId = Math.max(0, ...serviceTypes.map(s => s.id)) + 1;
-      setServiceTypes([...serviceTypes, { 
-        id: newId, 
-        deptId: Number(formData.deptId), 
-        name: formData.name, 
-        days: formData.days, 
-        status: formData.status 
-      }]);
+      const newId = Math.max(0, ...serviceTypes.map((s) => s.id)) + 1;
+      setServiceTypes([
+        ...serviceTypes,
+        {
+          id: newId,
+          deptId: Number(formData.deptId),
+          name: formData.name,
+          days: formData.days,
+          status: formData.status,
+        },
+      ]);
     }
     closeModal();
   };
 
   const handleDelete = (id: number) => {
-    if(confirm("Delete this service type?")) {
-      setServiceTypes(serviceTypes.filter(s => s.id !== id));
+    if (confirm("Delete this service type?")) {
+      setServiceTypes(serviceTypes.filter((s) => s.id !== id));
     }
   };
 
-  const handleEdit = (item: any) => {
+  const handleEdit = (item: typeof serviceTypes[0]) => {
     setEditId(item.id);
-    setFormData({ 
-      deptId: item.deptId.toString(), 
-      name: item.name, 
-      days: item.days, 
-      status: item.status 
+    setFormData({
+      deptId: item.deptId.toString(),
+      name: item.name,
+      days: item.days,
+      status: item.status,
     });
     setIsModalOpen(true);
   };
@@ -77,127 +103,168 @@ export default function ServiceTypeMaster() {
   const closeModal = () => {
     setIsModalOpen(false);
     setEditId(null);
-    setFormData({ deptId: '', name: '', days: 1, status: 'Active' });
+    setFormData({ deptId: "", name: "", days: 1, status: "Active" });
   };
 
-  // Helper: Department નું નામ મેળવવા માટે
-  const getDeptName = (id: number) => departments.find(d => d.id === id)?.name || 'Unknown';
+  const getDeptName = (id: number) => departments.find((d) => d.id === id)?.name || "Unknown";
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-2xl font-black text-slate-800 flex items-center gap-2">
-            <Settings2 className="text-blue-600" size={28} /> Service Type Master
-          </h1>
-          <p className="text-slate-400 text-sm font-medium">Manage issue categories for each department</p>
-        </div>
-        <button 
-          onClick={() => setIsModalOpen(true)}
-          className="bg-blue-600 text-white px-6 py-3 rounded-2xl font-black flex items-center gap-2 shadow-lg hover:bg-blue-700 transition-all"
-        >
-          <Plus size={20} /> Add New Type
-        </button>
-      </div>
-
-      {/* Table Section */}
-      <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-        <table className="w-full text-left">
-          <thead className="bg-slate-50 text-[11px] font-black text-slate-400 uppercase tracking-widest border-b">
-            <tr>
-              <th className="px-8 py-5">Department</th>
-              <th className="px-8 py-5">Service Type Name</th>
-              <th className="px-8 py-5">SLA Days</th>
-              <th className="px-8 py-5 text-right">Actions</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-slate-50">
-            {serviceTypes.map((item) => (
-              <tr key={item.id} className="hover:bg-slate-50/30 transition-colors">
-                <td className="px-8 py-5">
-                  <span className="bg-blue-50 text-blue-600 px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-tighter">
-                    {getDeptName(item.deptId)}
-                  </span>
-                </td>
-                <td className="px-8 py-5 font-bold text-slate-800">{item.name}</td>
-                <td className="px-8 py-5 text-slate-500 font-bold">{item.days} Days</td>
-                <td className="px-8 py-5 text-right">
-                  <div className="flex justify-end gap-2">
-                    <button 
-                      onClick={() => handleEdit(item)} 
-                      className="p-2.5 text-blue-600 bg-blue-50/50 hover:bg-blue-600 hover:text-white rounded-xl transition-all duration-200"
-                      title="Edit"
-                    >
-                      <Edit2 size={16} />
-                    </button>
-                    <button 
-                      onClick={() => handleDelete(item.id)} 
-                      className="p-2.5 text-red-500 bg-red-50/50 hover:bg-red-500 hover:text-white rounded-xl transition-all duration-200"
-                      title="Delete"
-                    >
-                      <Trash2 size={16} />
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* CRUD Modal */}
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-md flex items-center justify-center z-50 p-6">
-          <div className="bg-white w-full max-w-md rounded-[40px] p-10 space-y-6 shadow-2xl">
-            <div className="flex justify-between items-center">
-              <h2 className="text-2xl font-black text-slate-800">{editId ? 'Edit' : 'Add'} Service Type</h2>
-              <button onClick={closeModal} className="text-slate-300 hover:text-slate-500"><X size={24} /></button>
+      {/* Header */}
+      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+        <div className="space-y-1">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-primary text-primary-foreground">
+              <Settings2 className="h-5 w-5" />
             </div>
-            
-            <div className="space-y-4">
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Select Department</label>
-                <select 
-                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 ring-blue-500/5 font-bold text-slate-700"
-                  value={formData.deptId}
-                  onChange={(e) => setFormData({...formData, deptId: e.target.value})}
-                >
-                  <option value="">Choose Department...</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Service Type Name</label>
-                <input 
-                  type="text" 
-                  placeholder="e.g. Printer Issue" 
-                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 ring-blue-500/5 font-bold"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                />
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-[10px] font-black text-slate-400 uppercase ml-1">Resolution Days</label>
-                <input 
-                  type="number" 
-                  className="w-full p-4 bg-slate-50 border border-slate-100 rounded-2xl outline-none focus:ring-4 ring-blue-500/5 font-bold"
-                  value={isNaN(formData.days) ? '' : formData.days}
-                  onChange={(e) => setFormData({...formData, days: e.target.value === '' ? '' : parseInt(e.target.value)} as any)}
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-4 pt-2">
-              <button onClick={handleSave} className="flex-1 bg-blue-600 text-white font-black py-4 rounded-2xl flex items-center justify-center gap-2 shadow-xl shadow-blue-100">
-                <Save size={18} /> Save Type
-              </button>
-              <button onClick={closeModal} className="flex-1 bg-slate-50 text-slate-400 font-bold py-4 rounded-2xl">Cancel</button>
-            </div>
+            <h1 className="text-3xl font-bold tracking-tight">Service Type Master</h1>
           </div>
+          <p className="text-muted-foreground">
+            Manage issue categories for each department
+          </p>
         </div>
-      )}
+        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+          <DialogTrigger asChild>
+            <Button className="gap-2 shadow-lg shadow-primary/25">
+              <Plus className="h-4 w-4" />
+              Add New Type
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[450px]">
+            <DialogHeader>
+              <DialogTitle>{editId ? "Edit" : "Add"} Service Type</DialogTitle>
+              <DialogDescription>
+                {editId ? "Update the service type details." : "Create a new service type for a department."}
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <Label>Select Department</Label>
+                <Select value={formData.deptId} onValueChange={(value) => setFormData({ ...formData, deptId: value })}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Choose Department..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {departments.map((d) => (
+                      <SelectItem key={d.id} value={d.id.toString()}>
+                        {d.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Service Type Name</Label>
+                <Input
+                  placeholder="e.g. Printer Issue"
+                  value={formData.name}
+                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Resolution Days (SLA)</Label>
+                <Input
+                  type="number"
+                  min={1}
+                  value={formData.days}
+                  onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) || 1 })}
+                />
+              </div>
+              <div className="flex gap-3 pt-2">
+                <Button onClick={handleSave} className="flex-1 gap-2">
+                  <Save className="h-4 w-4" />
+                  Save Type
+                </Button>
+                <Button variant="outline" className="flex-1" onClick={closeModal}>
+                  Cancel
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 text-primary">
+              <Settings2 className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Total Types</p>
+              <p className="text-2xl font-bold">{serviceTypes.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+              <Clock className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Avg SLA</p>
+              <p className="text-2xl font-bold">
+                {(serviceTypes.reduce((acc, s) => acc + s.days, 0) / serviceTypes.length).toFixed(1)} Days
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Table */}
+      <Card>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader>
+              <TableRow className="bg-muted/50">
+                <TableHead className="font-semibold">Department</TableHead>
+                <TableHead className="font-semibold">Service Type Name</TableHead>
+                <TableHead className="font-semibold">SLA Days</TableHead>
+                <TableHead className="text-right font-semibold">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {serviceTypes.map((item) => (
+                <TableRow key={item.id} className="group">
+                  <TableCell>
+                    <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
+                      {getDeptName(item.deptId)}
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="font-medium">{item.name}</TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <Clock className="h-4 w-4 text-muted-foreground" />
+                      <span className="font-medium">{item.days} Days</span>
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                        onClick={() => handleEdit(item)}
+                      >
+                        <Edit2 className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => handleDelete(item.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
     </div>
   );
 }
