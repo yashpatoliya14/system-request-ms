@@ -26,12 +26,13 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
     try {
         const { id } = await params;
         //get the Person Master Data
-        const user = await prisma.users.findFirst({
+        const user = await prisma.serviceDeptPerson.findFirst({
             include: {
                 ServiceDepartment: true,
+                Users:true
             },
             where: {
-                UserID: BigInt(id),
+                DeptPersonID: BigInt(id),
             }
         })
         if (user) {
@@ -51,22 +52,33 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
     try {
         const { id } = await params;
         const body = await req.json();
-        const { FullName, ServiceDeptID, Role } = body;
+        const { ServiceDeptID, Role } = body;
+        
+        
         //update the Person Master Data
-        const user = await prisma.users.update({
+        const user = await prisma.serviceDeptPerson.update({
             data: {
-                FullName: FullName,
                 ServiceDeptID: BigInt(ServiceDeptID),
-                Role: Role,
             },
             where: {
-                UserID: BigInt(id),
+                DeptPersonID: BigInt(id),
             }
         })
-        if (user) {
-            return NextResponse.json({ success: true, message: "Update Person Master Successfull", data: user ? [user] : [] } as IPersonMasterResponse, { status: 200 });
-        } else {
-            return NextResponse.json({ success: false, message: "Update Person Master Failed", data: [] }, { status: 400 });
+
+        // update user role
+        if(user.UserID){
+
+            await prisma.users.update({
+                data: {
+                    Role: Role,
+                },
+                where: {
+                    UserID: BigInt(user.UserID),
+                }
+            })
+                return NextResponse.json({ success: true, message: "Update Person Master Successfull", data: user ? [user] : [] } as IPersonMasterResponse, { status: 200 });
+        }else{
+                return NextResponse.json({ success: false, message: "Update Person Master Failed", data: [] }, { status: 400 });
         }
     } catch (e) {
 
@@ -74,20 +86,35 @@ export async function PATCH(req: NextRequest, { params }: { params: { id: string
         return NextResponse.json({ success: false, message: "Update Person Master Failed", data: [] }, { status: 500 });
     }
 }
+
 export async function DELETE(req: NextRequest, { params }: { params: { id: string } }) {
 
     try {
         const { id } = await params;
 
+        
         //delete the Person Master Data
-        const user = await prisma.users.delete({
+        const user = await prisma.serviceDeptPerson.delete({
             where: {
-                UserID: BigInt(id),
+                DeptPersonID: BigInt(id),
             }
         })
-        if (user) {
-            return NextResponse.json({ success: true, message: "Delete Person Master Successfull", data: user ? [user] : [] } as IPersonMasterResponse, { status: 200 });
-        } else {
+        if(user.UserID){
+
+            const userRole = await prisma.users.update({
+                data:{
+                    Role: "User",
+                },
+                where: {
+                    UserID: BigInt(user.UserID),
+                }
+            })
+            if(userRole){
+                return NextResponse.json({ success: true, message: "Delete Person Master Successfull", data: user ? [user] : [] } as IPersonMasterResponse, { status: 200 });
+            }else{
+                return NextResponse.json({ success: false, message: "Delete Person Master Failed", data: [] }, { status: 400 });
+            }
+        }else{
             return NextResponse.json({ success: false, message: "Delete Person Master Failed", data: [] }, { status: 400 });
         }
     } catch (e) {

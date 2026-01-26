@@ -30,27 +30,47 @@ export async function POST(req: NextRequest) {
         const body = await req.json();
         const { FullName, Email, Phone, Role, ServiceDeptID } = body;
 
-        //create a user
-        const user = await prisma.users.create({
-            data: {
-                FullName,
-                Email,
-                Username: Email.substring(0, Email.indexOf("@")),
-                Phone,
-                IsVerified: true,
-                Role: Role,
-                ServiceDeptID: ServiceDeptID ? BigInt(ServiceDeptID) : null,
+        let user = await prisma.users.findFirst({
+            where: {
+                Email: Email,
             }
         })
-        if (user) {
-            return NextResponse.json({ success: true, message: "Signup Successfull", data: [{ Email: user.Email, FullName: user.FullName, Username: user.Username, IsVerified: user.IsVerified }] } as IPersonMasterResponse, { status: 200 });
+        
+        if(!user){
+            //create a user
+            user = await prisma.users.create({
+                data: {
+                    FullName,
+                    Email,
+                    Username: Email.substring(0, Email.indexOf("@")),
+                    Phone,
+                    IsVerified: true,
+                    Role: Role,
+                }
+            })
+            if(!user){
+                return NextResponse.json({ success: false, message: "User Creation Failed", data: [] } as IPersonMasterResponse, { status: 400 });
+            }
+        }
+
+        //create a person master
+        const personMaster = await prisma.serviceDeptPerson.create({
+            data: {
+                ServiceDeptID: ServiceDeptID ? BigInt(ServiceDeptID) : null,
+                UserID: user.UserID,
+                IsActive: true,
+            }
+        })
+
+        if (personMaster) {
+            return NextResponse.json({ success: true, message: "Person Master Created Successfull", data: [personMaster] } as IPersonMasterResponse, { status: 200 });
         } else {
-            return NextResponse.json({ success: false, message: "Signup Failed", data: [] }, { status: 400 });
+            return NextResponse.json({ success: false, message: "Person Master Creation Failed", data: [] }, { status: 400 });
         }
     } catch (e) {
 
         console.log(`Error in creating person master ${e}`);
-        return NextResponse.json({ success: false, message: "Signup Failed", data: [] }, { status: 500 });
+        return NextResponse.json({ success: false, message: "Person Master creation failed", data: [] }, { status: 500 });
     }
 }
 
@@ -59,14 +79,13 @@ export async function GET(req: NextRequest) {
     try {
 
         //get the Persons Master Data
-        const users = await prisma.users.findMany({
+        const users = await prisma.serviceDeptPerson.findMany({
             include: {
                 ServiceDepartment: true,
+                Users:true
             },
             where: {
-                Role: {
-                    in: ["Technician", "HOD"]
-                }
+                IsActive: true
             }
         })
         if (users) {

@@ -15,21 +15,20 @@ model ServiceDepartment {
   CCEmails           String?
   ServiceDeptPerson  ServiceDeptPerson[]
   ServiceRequestType ServiceRequestType[]
-  Users              Users[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model ServiceDeptPerson {
-  DeptPersonID      BigInt             @id @default(autoincrement())
-  CreatedAt         DateTime           @default(now()) @db.Timestamptz(6)
-  ServiceDeptID     BigInt?
-  UserID            BigInt?
-  Role              String?
-  IsActive          Boolean?
-  ModifiedAt        DateTime?          @db.Timestamp(6)
-  ServiceDepartment ServiceDepartment? @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
-  Users             Users?             @relation(fields: [UserID], references: [UserID], onDelete: NoAction, onUpdate: NoAction)
-  ServiceRequest    ServiceRequest[]
+  DeptPersonID                 BigInt                         @id @default(autoincrement())
+  CreatedAt                    DateTime                       @default(now()) @db.Timestamptz(6)
+  ServiceDeptID                BigInt?
+  UserID                       BigInt?
+  IsActive                     Boolean?
+  ModifiedAt                   DateTime?                      @db.Timestamp(6)
+  ServiceDepartment            ServiceDepartment?             @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
+  Users                        Users?                         @relation(fields: [UserID], references: [UserID], onDelete: NoAction, onUpdate: NoAction)
+  ServiceRequest               ServiceRequest[]
+  ServiceRequestTypeWisePerson ServiceRequestTypeWisePerson[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -81,16 +80,17 @@ model ServiceRequestStatus {
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model ServiceRequestType {
-  ServiceRequestTypeID BigInt             @id @default(autoincrement())
-  Created              DateTime           @default(now()) @db.Timestamptz(6)
-  ServiceTypeID        BigInt?
-  ServiceDeptID        BigInt?
-  RequestTypeName      String?
-  DefaultPriority      Decimal?           @db.Decimal
-  IsActive             Boolean?
-  ServiceRequest       ServiceRequest[]
-  ServiceDepartment    ServiceDepartment? @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
-  ServiceType          ServiceType?       @relation(fields: [ServiceTypeID], references: [ServiceTypeID], onDelete: NoAction, onUpdate: NoAction)
+  ServiceRequestTypeID         BigInt                         @id @default(autoincrement())
+  Created                      DateTime                       @default(now()) @db.Timestamptz(6)
+  ServiceTypeID                BigInt?
+  ServiceDeptID                BigInt?
+  RequestTypeName              String?
+  DefaultPriority              Decimal?                       @db.Decimal
+  IsActive                     Boolean?
+  ServiceRequest               ServiceRequest[]
+  ServiceDepartment            ServiceDepartment?             @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
+  ServiceType                  ServiceType?                   @relation(fields: [ServiceTypeID], references: [ServiceTypeID], onDelete: NoAction, onUpdate: NoAction)
+  ServiceRequestTypeWisePerson ServiceRequestTypeWisePerson[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -113,10 +113,21 @@ model Users {
   Password             String?
   Email                String?
   Phone                Decimal?               @db.Decimal
-  ServiceDeptID        BigInt?
   ServiceDeptPerson    ServiceDeptPerson[]
   ServiceRequest       ServiceRequest[]
   ServiceRequestReply  ServiceRequestReply[]
   ServiceRequestStatus ServiceRequestStatus[]
-  ServiceDepartment    ServiceDepartment?     @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model ServiceRequestTypeWisePerson {
+  ServiceRequestTypeWisePerson BigInt              @id @default(autoincrement())
+  CreatedAt                    DateTime            @default(now()) @db.Timestamptz(6)
+  ServiceRequestTypeID         BigInt?
+  FromDate                     DateTime?           @db.Date
+  ToDate                       DateTime?           @db.Date
+  ServicePersonID              BigInt?
+  ModifiedAt                   DateTime?           @default(now()) @db.Timestamp(6)
+  ServiceDeptPerson            ServiceDeptPerson?  @relation(fields: [ServicePersonID], references: [DeptPersonID], onDelete: NoAction, onUpdate: NoAction)
+  ServiceRequestType           ServiceRequestType? @relation(fields: [ServiceRequestTypeID], references: [ServiceRequestTypeID], onDelete: NoAction, onUpdate: NoAction)
 }
