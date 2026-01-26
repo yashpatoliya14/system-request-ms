@@ -15,6 +15,7 @@ model ServiceDepartment {
   CCEmails           String?
   ServiceDeptPerson  ServiceDeptPerson[]
   ServiceRequestType ServiceRequestType[]
+  Users              Users[]
 }
 
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
@@ -112,8 +113,10 @@ model Users {
   Password             String?
   Email                String?
   Phone                Decimal?               @db.Decimal
+  ServiceDeptID        BigInt?
   ServiceDeptPerson    ServiceDeptPerson[]
   ServiceRequest       ServiceRequest[]
   ServiceRequestReply  ServiceRequestReply[]
   ServiceRequestStatus ServiceRequestStatus[]
+  ServiceDepartment    ServiceDepartment?     @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
 }
