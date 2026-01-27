@@ -37,14 +37,14 @@ model ServiceRequest {
   Created              DateTime              @default(now()) @db.Timestamptz(6)
   RequestNo            BigInt?
   ServiceRequestTypeID BigInt?
-  RequesterID          BigInt?
+  RequestorID          BigInt?
   AssignedToID         BigInt?
   StatusID             BigInt?
   Title                String?
   Description          String?
   Priority             BigInt?
   ServiceDeptPerson    ServiceDeptPerson?    @relation(fields: [AssignedToID], references: [DeptPersonID], onDelete: NoAction, onUpdate: NoAction)
-  Users                Users?                @relation(fields: [RequesterID], references: [UserID], onDelete: NoAction, onUpdate: NoAction)
+  Users                Users?                @relation(fields: [RequestorID], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "ServiceRequest_RequesterID_fkey")
   ServiceRequestType   ServiceRequestType?   @relation(fields: [ServiceRequestTypeID], references: [ServiceRequestTypeID], onDelete: NoAction, onUpdate: NoAction)
   ServiceRequestReply  ServiceRequestReply[]
 }
