@@ -5,15 +5,16 @@ import { NextRequest, NextResponse } from "next/server";
 
 interface IVerifyOtpBody {
     Email: string;
-    Otp: number;
+    Otp: string;
+    isForgotPassword?: boolean;
 }
 
 export async function POST(req: NextRequest) {
     try {
         const body = await req.json();
-        const { Email, Otp }: IVerifyOtpBody = body;
+        const { Email, Otp, isForgotPassword }: IVerifyOtpBody = body;
 
-        let user = await prisma.tempUser.findFirst({
+        const tempUser = await prisma.tempUser.findFirst({
             where: {
                 Email,
                 Otp: Otp,
@@ -23,40 +24,55 @@ export async function POST(req: NextRequest) {
             }
         });
 
-        if (!user) {
+        if (!tempUser) {
             return NextResponse.json({
                 success: false,
-                message: "Invalid OTP",
+                message: "Invalid or expired OTP",
                 data: []
             });
         }
 
+        // For forgot password flow: just verify OTP and clean up
+        if (isForgotPassword) {
+            await prisma.tempUser.deleteMany({
+                where: { Email }
+            });
 
-        user = await prisma.users.create({
+            return NextResponse.json({
+                success: true,
+                message: "OTP verified successfully",
+                data: []
+            });
+        }
+
+        // For signup flow: create user from tempUser data
+        const newUser = await prisma.users.create({
             data: {
-                Email: user.Email,
-                Password: user.Password,
-                FullName: user.FullName,
-                Username: user.Username,
-                ProfilePhoto: user.ProfilePhoto,
-                IsVerified: user.IsVerified,
-                Phone: user.Phone,
-                Role: user.Role
+                Email: tempUser.Email,
+                Password: tempUser.Password,
+                FullName: tempUser.FullName,
+                Username: tempUser.Username,
+                ProfilePhoto: tempUser.ProfilePhoto,
+                IsVerified: true,
+                Phone: tempUser.Phone,
+                Role: tempUser.Role
             }
         });
 
         await prisma.tempUser.deleteMany({
-            where: {
-                Email
-            }
+            where: { Email }
         });
 
-        const token = generateToken(user.id, user.email, user.role);
+        const token = generateToken({
+            userId: newUser.UserID.toString(),
+            email: newUser.Email ?? "",
+            role: newUser.Role ?? "user"
+        });
 
         return NextResponse.json({
             success: true,
             message: "User verified successfully",
-            data: [user],
+            data: [newUser],
             token: token
         });
 

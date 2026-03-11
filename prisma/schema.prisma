@@ -111,7 +111,7 @@ model Users {
   ProfilePhoto         String?                @default("NULL")
   IsVerified           Boolean?               @default(false)
   Password             String?
-  Email                String?
+  Email                String                 @unique
   Phone                Decimal?               @db.Decimal
   ServiceDeptPerson    ServiceDeptPerson[]
   ServiceRequest       ServiceRequest[]

@@ -47,8 +47,20 @@ export async function POST(req: NextRequest) {
         let status: boolean = await sendOtpViaEmail(Email, otp);
 
         if (status) {
-            const user = await prisma.tempUser.create({
-                data: {
+            const user = await prisma.tempUser.upsert({
+                where: { Email },
+                update: {
+                    Otp: otp,
+                    OtpExpired: otpExpiry,
+                    Password: hashedPassword,
+                    FullName,
+                    Username: Email.slice(0, Email.indexOf('@')),
+                    ProfilePhoto,
+                    IsVerified: false,
+                    Phone,
+                    Role: "user"
+                },
+                create: {
                     Email,
                     Otp: otp,
                     OtpExpired: otpExpiry,

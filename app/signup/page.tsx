@@ -20,7 +20,9 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import {z} from "zod";
+import { z } from "zod";
+import { useActionState } from "react";
+import { apiClient } from "@/lib/apiClient";
 
 const signupSchema = z.object({
     FullName: z.string().min(3, "Full name must be at least 3 characters long"),
@@ -29,11 +31,65 @@ const signupSchema = z.object({
     Password: z.string().min(6, "Password must be at least 6 characters long"),
 });
 
+interface SignupState {
+    errors: Record<string, string>;
+    message: string;
+}
+
 export default function SignupPage() {
     const router = useRouter();
-    
+
+    const handleSignup = async (
+        _prevState: SignupState,
+        formData: FormData,
+    ): Promise<SignupState> => {
+        const rawValues = {
+            FullName: formData.get("fullName") as string,
+            Email: formData.get("email") as string,
+            Phone: formData.get("phone") as string,
+            Password: formData.get("password") as string,
+        };
+
+        const result = signupSchema.safeParse(rawValues);
+
+        // error display when fields are not validated
+        if (!result.success) {
+            const fieldErrors: Record<string, string> = {};
+            for (const issue of result.error.issues) {
+                
+                // key like "Password", "Email", "Phone", "FullName"
+                const key = issue.path[0] as string;
+
+                // issue is an object with a path and a message 
+                fieldErrors[key] = issue.message;
+            
+            }
+            return { errors: fieldErrors, message: "Validation failed" };
+        }
+
+        try {
+            const res = await apiClient.post("/api/auth/signup", result.data);
+            
+            if (res.success) {
+                router.replace("/verify-otp?email=" + encodeURIComponent(rawValues.Email));
+            }
+            return { errors: {}, message: "" };
+        } catch (error) {
+            console.error(error);
+            return {
+                errors: {},
+                message: error instanceof Error ? error.message : "Signup failed. Please try again.",
+            };
+        }
+    };
+
+    const [state, formAction, isPending] = useActionState(handleSignup, {
+    errors: {},
+    message: "",
+});
 
     return (
+
         <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-background via-background to-primary/5 p-6">
             {/* Background decoration */}
             <div className="pointer-events-none fixed inset-0 overflow-hidden">
@@ -65,7 +121,7 @@ export default function SignupPage() {
                         </CardDescription>
                     </CardHeader>
                     <CardContent>
-                        <form noValidate className="space-y-5">
+                        <form noValidate action={formAction} className="space-y-5">
                             {/* Profile Photo */}
                             <div className="flex flex-col items-center gap-3">
                                 <button
@@ -99,6 +155,9 @@ export default function SignupPage() {
                                         suppressHydrationWarning
                                     />
                                 </div>
+                                {state.errors.FullName && (
+                                    <p className="text-xs text-destructive">{state.errors.FullName}</p>
+                                )}
                             </div>
 
                             {/* Email */}
@@ -115,6 +174,9 @@ export default function SignupPage() {
                                         suppressHydrationWarning
                                     />
                                 </div>
+                                {state.errors.Email && (
+                                    <p className="text-xs text-destructive">{state.errors.Email}</p>
+                                )}
                             </div>
 
                             {/* Phone */}
@@ -131,6 +193,9 @@ export default function SignupPage() {
                                         suppressHydrationWarning
                                     />
                                 </div>
+                                {state.errors.Phone && (
+                                    <p className="text-xs text-destructive">{state.errors.Phone}</p>
+                                )}
                             </div>
 
                             {/* Password */}
@@ -153,14 +218,23 @@ export default function SignupPage() {
                                         <Eye className="h-4 w-4" />
                                     </button>
                                 </div>
+                                {state.errors.Password && (
+                                    <p className="text-xs text-destructive">{state.errors.Password}</p>
+                                )}
                             </div>
+
+                            {/* General Error */}
+                            {state.message && !Object.keys(state.errors).length && (
+                                <p className="text-center text-sm text-destructive">{state.message}</p>
+                            )}
 
                             {/* Submit Button */}
                             <Button
                                 type="submit"
+                                disabled={isPending}
                                 className="w-full gap-2 shadow-lg shadow-primary/25"
                             >
-                                Create Account →
+                                {isPending ? "Creating Account..." : "Create Account →"}
                             </Button>
                         </form>
 
