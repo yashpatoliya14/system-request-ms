@@ -1,81 +1,280 @@
 "use client";
-import React, { use, useState } from 'react';
-import { ArrowLeft, MessageCircle, Send, Clock } from 'lucide-react';
-import Link from 'next/link';
+
+import React, { use, useEffect, useState } from "react";
+import { ArrowLeft, MessageCircle, Send, Clock, Loader2 } from "lucide-react";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { apiClient } from "@/lib/apiClient";
+
+// ---- Types ----
+interface ServiceRequest {
+  ServiceRequestID: string;
+  Title: string;
+  Description: string;
+  Priority: string;
+  StatusID: string | null;
+  Created: string;
+  ServiceRequestType?: { RequestTypeName: string } | null;
+}
+
+interface Reply {
+  ReplyID: string;
+  Message: string;
+  Created: string;
+  RepliedByID: string | null;
+  StatusID: string | null;
+  Users?: { FullName: string } | null;
+}
+
+interface UserInfo {
+  userId: string;
+  fullName: string;
+}
 
 interface PageProps {
   params: Promise<{ id: string }>;
 }
 
 export default function RequestDetails({ params }: PageProps) {
-  // 1. Params ને React.use() થી અનરેપ કરો (Next.js 15+ Rules)
   const resolvedParams = use(params);
   const id = resolvedParams.id;
 
+  const [request, setRequest] = useState<ServiceRequest | null>(null);
+  const [replies, setReplies] = useState<Reply[]>([]);
+  const [user, setUser] = useState<UserInfo | null>(null);
   const [message, setMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [sending, setSending] = useState(false);
+
+  // ---- Fetch user info ----
+  useEffect(() => {
+    const fetchUser = async () => {
+      try {
+        const res = await apiClient.get<UserInfo[]>("/api/auth/me");
+        if (res.success && res.data?.[0]) {
+          setUser(res.data[0] as unknown as UserInfo);
+        }
+      } catch (err) {
+        console.error("Failed to fetch user:", err);
+      }
+    };
+    fetchUser();
+  }, []);
+
+  // ---- Fetch request details ----
+  useEffect(() => {
+    const fetchRequest = async () => {
+      setLoading(true);
+      try {
+        const res = await apiClient.get<ServiceRequest[]>(`/api/portal/requestor/${id}`);
+        if (res.success && res.data?.[0]) {
+          setRequest(res.data[0]);
+        }
+      } catch (err) {
+        console.error("Failed to fetch request:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchRequest();
+  }, [id]);
+
+  // ---- Status helper ----
+  const getStatusLabel = (statusId: string | null) => {
+    if (!statusId) return "Pending";
+    const sid = Number(statusId);
+    if (sid === 1) return "Pending";
+    if (sid === 2) return "In Progress";
+    if (sid === 3) return "Completed";
+    return "Pending";
+  };
+
+  const getStatusClass = (statusId: string | null) => {
+    const label = getStatusLabel(statusId);
+    if (label === "Completed") return "bg-emerald-50 text-emerald-600 border-emerald-100";
+    if (label === "In Progress") return "bg-blue-50 text-blue-600 border-blue-100";
+    return "bg-amber-50 text-amber-600 border-amber-100";
+  };
+
+  // ---- Send reply (placeholder — you can add a reply API later) ----
+  const handleSendReply = async () => {
+    if (!message.trim() || !user) return;
+    setSending(true);
+    try {
+      // Add reply to local state for now
+      const newReply: Reply = {
+        ReplyID: Date.now().toString(),
+        Message: message,
+        Created: new Date().toISOString(),
+        RepliedByID: user.userId,
+        StatusID: null,
+        Users: { FullName: user.fullName },
+      };
+      setReplies((prev) => [...prev, newReply]);
+      setMessage("");
+    } catch (err) {
+      console.error("Failed to send reply:", err);
+    } finally {
+      setSending(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-32">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  if (!request) {
+    return (
+      <div className="flex flex-col items-center justify-center py-32 text-muted-foreground">
+        <p className="text-lg font-medium">Request not found</p>
+        <Button asChild variant="link" className="mt-2">
+          <Link href="/request-details">Go back</Link>
+        </Button>
+      </div>
+    );
+  }
 
   return (
     <div className="max-w-5xl mx-auto space-y-6">
       {/* Top Bar */}
       <div className="flex items-center gap-4">
-        <Link href="/request-details" className="p-3 bg-white rounded-2xl border border-slate-100 text-slate-400 hover:text-blue-600 transition-all">
+        <Link
+          href="/request-details"
+          className="p-3 bg-card rounded-2xl border text-muted-foreground hover:text-primary transition-all"
+        >
           <ArrowLeft size={20} />
         </Link>
         <div>
-          <h1 className="text-2xl font-black text-slate-800">Request #{id}</h1>
-          <p className="text-xs text-slate-400 font-bold uppercase tracking-widest">Conversation Timeline</p>
+          <h1 className="text-2xl font-bold tracking-tight">
+            Request #SR-{id}
+          </h1>
+          <p className="text-xs text-muted-foreground font-semibold uppercase tracking-widest">
+            Conversation Timeline
+          </p>
         </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {/* Chat Thread */}
-        <div className="lg:col-span-2 flex flex-col h-[600px] bg-white rounded-[32px] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="p-6 border-b border-slate-50 bg-slate-50/50">
-             <h2 className="font-bold text-slate-700 flex items-center gap-2">
-                <MessageCircle size={18} className="text-blue-600" /> Activity Log
-             </h2>
+        <div className="lg:col-span-2 flex flex-col h-[600px] bg-card rounded-2xl border shadow-sm overflow-hidden">
+          <div className="p-6 border-b bg-muted/30">
+            <h2 className="font-bold text-foreground flex items-center gap-2">
+              <MessageCircle size={18} className="text-primary" /> Activity Log
+            </h2>
           </div>
 
-          <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
-            <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100 max-w-[80%]">
-              <p className="text-sm font-bold text-slate-800 mb-1">Rajesh (Technician)</p>
-              <p className="text-sm text-slate-600 leading-relaxed">
-                We have received your request. I will be visiting your location in 30 minutes.
+          <div className="flex-1 overflow-y-auto p-8 space-y-6">
+            {/* Original request as first message */}
+            <div className="bg-muted/50 p-5 rounded-2xl border max-w-[80%]">
+              <p className="text-sm font-bold text-foreground mb-1">
+                {request.Title}
               </p>
-              <p className="text-[10px] text-slate-400 mt-2 font-bold uppercase">Today • 10:45 AM</p>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {request.Description || "No description provided."}
+              </p>
+              <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase">
+                {new Date(request.Created).toLocaleString()}
+              </p>
             </div>
+
+            {/* Replies */}
+            {replies.map((reply) => {
+              const isOwn = reply.RepliedByID === user?.userId;
+              return (
+                <div
+                  key={reply.ReplyID}
+                  className={`p-5 rounded-2xl border max-w-[80%] ${
+                    isOwn
+                      ? "ml-auto bg-primary/5 border-primary/20"
+                      : "bg-muted/50"
+                  }`}
+                >
+                  <p className="text-sm font-bold text-foreground mb-1">
+                    {reply.Users?.FullName || "User"}
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {reply.Message}
+                  </p>
+                  <p className="text-[10px] text-muted-foreground mt-2 font-bold uppercase">
+                    {new Date(reply.Created).toLocaleString()}
+                  </p>
+                </div>
+              );
+            })}
+
+            {replies.length === 0 && (
+              <p className="text-center text-sm text-muted-foreground py-8">
+                No replies yet. Start the conversation below.
+              </p>
+            )}
           </div>
 
           {/* Reply Box */}
-          <div className="p-6 border-t border-slate-100">
-            <div className="flex gap-4 bg-slate-50 p-2 rounded-2xl border border-slate-200 focus-within:ring-4 ring-blue-500/5 transition-all">
-              <input 
-                type="text" 
+          <div className="p-6 border-t">
+            <div className="flex gap-4 bg-muted/50 p-2 rounded-2xl border focus-within:ring-4 ring-primary/5 transition-all">
+              <input
+                type="text"
                 value={message}
                 onChange={(e) => setMessage(e.target.value)}
-                placeholder="Type your message..." 
-                className="flex-1 bg-transparent border-none outline-none px-4 text-sm font-bold text-slate-700"
+                onKeyDown={(e) => e.key === "Enter" && handleSendReply()}
+                placeholder="Type your message..."
+                className="flex-1 bg-transparent border-none outline-none px-4 text-sm font-medium"
               />
-              <button className="bg-blue-600 text-white p-3 rounded-xl shadow-lg shadow-blue-200 hover:scale-105 active:scale-95 transition-all">
-                <Send size={20} />
-              </button>
+              <Button
+                size="icon"
+                onClick={handleSendReply}
+                disabled={!message.trim() || sending}
+                className="rounded-xl"
+              >
+                {sending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send size={20} />
+                )}
+              </Button>
             </div>
           </div>
         </div>
 
         {/* Info Card */}
-        <div className="bg-white rounded-[32px] border border-slate-100 shadow-sm p-8 h-fit">
-          <h3 className="text-xs font-black text-slate-400 uppercase tracking-widest mb-6">Status Info</h3>
+        <div className="bg-card rounded-2xl border shadow-sm p-8 h-fit space-y-6">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+            Request Info
+          </h3>
           <div className="space-y-4">
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-400 uppercase">Current Status</span>
-              <span className="bg-blue-50 text-blue-600 text-[10px] px-2 py-1 rounded-lg font-black uppercase tracking-tighter border border-blue-100">
-                In Progress
+              <span className="text-xs font-bold text-muted-foreground uppercase">Status</span>
+              <Badge className={`text-[10px] px-2 py-1 font-bold uppercase ${getStatusClass(request.StatusID)}`}>
+                {getStatusLabel(request.StatusID)}
+              </Badge>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-muted-foreground uppercase">Type</span>
+              <span className="text-sm font-semibold">
+                {request.ServiceRequestType?.RequestTypeName || "—"}
               </span>
             </div>
             <div className="flex justify-between items-center">
-              <span className="text-xs font-bold text-slate-400 uppercase">Resolution Target</span>
-              <span className="text-sm font-black text-slate-700">48 Hours</span>
+              <span className="text-xs font-bold text-muted-foreground uppercase">Priority</span>
+              <span className="text-sm font-semibold">
+                {request.Priority ? (
+                  Number(request.Priority) >= 4 ? "Urgent" :
+                  Number(request.Priority) === 3 ? "High" :
+                  Number(request.Priority) === 2 ? "Medium" : "Low"
+                ) : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between items-center">
+              <span className="text-xs font-bold text-muted-foreground uppercase">Created</span>
+              <span className="text-sm font-semibold flex items-center gap-1">
+                <Clock className="h-3 w-3" />
+                {new Date(request.Created).toLocaleDateString()}
+              </span>
             </div>
           </div>
         </div>

@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useState } from "react";
-import { CheckSquare, Plus, Trash2, Edit3 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useEffect, useState } from "react";
+import { CheckSquare, Plus, Trash2, Edit3, Loader2, X } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
 import {
   Dialog,
   DialogContent,
@@ -23,30 +24,273 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { apiClient } from "@/lib/apiClient";
+
+// ---- Types ----
+interface StatusItem {
+  ServiceRequestStatusID: number;
+  ServiceRequestStatusName: string;
+  ServiceRequestStatusSystemName: string;
+  Sequence: number | null;
+  Description: string | null;
+  ServiceRequestStatusCssClass: string | null;
+  IsOpen: boolean | null;
+  IsNoFurtherActionRequired: boolean | null;
+  IsAllowedForTechnician: boolean | null;
+  Created: string;
+}
+
+const COLOR_OPTIONS = [
+  { value: "bg-amber-500", label: "Amber", badge: "bg-amber-100 text-amber-700" },
+  { value: "bg-blue-500", label: "Blue", badge: "bg-blue-100 text-blue-700" },
+  { value: "bg-emerald-500", label: "Green", badge: "bg-emerald-100 text-emerald-700" },
+  { value: "bg-orange-500", label: "Orange", badge: "bg-orange-100 text-orange-700" },
+  { value: "bg-rose-500", label: "Red", badge: "bg-rose-100 text-rose-700" },
+  { value: "bg-violet-500", label: "Violet", badge: "bg-violet-100 text-violet-700" },
+  { value: "bg-cyan-500", label: "Cyan", badge: "bg-cyan-100 text-cyan-700" },
+  { value: "bg-slate-500", label: "Grey", badge: "bg-slate-100 text-slate-700" },
+];
+
+const DEFAULT_FORM = {
+  ServiceRequestStatusName: "",
+  ServiceRequestStatusSystemName: "",
+  Sequence: "",
+  Description: "",
+  ServiceRequestStatusCssClass: "bg-blue-500",
+  IsOpen: true,
+  IsNoFurtherActionRequired: false,
+  IsAllowedForTechnician: false,
+};
 
 export default function StatusMaster() {
-  const [statuses] = useState([
-    { id: 1, name: "Pending", color: "bg-amber-500", description: "Initial state of request" },
-    { id: 2, name: "In Progress", color: "bg-blue-500", description: "Technician is working" },
-    { id: 3, name: "Completed", color: "bg-emerald-500", description: "Issue has been fixed" },
-    { id: 4, name: "On Hold", color: "bg-orange-500", description: "Waiting for resources" },
-    { id: 5, name: "Cancelled", color: "bg-rose-500", description: "Request was cancelled" },
-  ]);
+  const [statuses, setStatuses] = useState<StatusItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [editingStatus, setEditingStatus] = useState<StatusItem | null>(null);
+  const [isEditOpen, setIsEditOpen] = useState(false);
 
-  const getStatusBadge = (name: string, color: string) => {
-    const colorMap: Record<string, string> = {
-      "bg-amber-500": "bg-amber-100 text-amber-700",
-      "bg-blue-500": "bg-blue-100 text-blue-700",
-      "bg-emerald-500": "bg-emerald-100 text-emerald-700",
-      "bg-orange-500": "bg-orange-100 text-orange-700",
-      "bg-rose-500": "bg-rose-100 text-rose-700",
-    };
-    return (
-      <Badge className={`${colorMap[color] || "bg-gray-100 text-gray-700"} hover:${colorMap[color]}`}>
-        {name}
-      </Badge>
-    );
+  const [formData, setFormData] = useState(DEFAULT_FORM);
+
+  // ---- Fetch all statuses ----
+  const fetchStatuses = async () => {
+    setLoading(true);
+    try {
+      const res = await apiClient.get<StatusItem[]>("/api/admin/status-master");
+      if (res.success) {
+        setStatuses(res.data || []);
+      }
+    } catch (err) {
+      console.error("Failed to fetch statuses:", err);
+    } finally {
+      setLoading(false);
+    }
   };
+
+  useEffect(() => {
+    fetchStatuses();
+  }, []);
+
+  // ---- Create status ----
+  const handleCreate = async () => {
+    if (!formData.ServiceRequestStatusName.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await apiClient.post("/api/admin/status-master", {
+        ServiceRequestStatusName: formData.ServiceRequestStatusName,
+        ServiceRequestStatusSystemName:
+          formData.ServiceRequestStatusSystemName ||
+          formData.ServiceRequestStatusName.toLowerCase().replace(/\s+/g, "_"),
+        Sequence: formData.Sequence || undefined,
+        Description: formData.Description || undefined,
+        ServiceRequestStatusCssClass: formData.ServiceRequestStatusCssClass,
+        IsOpen: formData.IsOpen,
+        IsNoFurtherActionRequired: formData.IsNoFurtherActionRequired,
+        IsAllowedForTechnician: formData.IsAllowedForTechnician,
+      });
+      if (res.success) {
+        setIsCreateOpen(false);
+        setFormData(DEFAULT_FORM);
+        await fetchStatuses();
+      }
+    } catch (err) {
+      console.error("Failed to create status:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ---- Open edit modal ----
+  const openEdit = (status: StatusItem) => {
+    setEditingStatus(status);
+    setFormData({
+      ServiceRequestStatusName: status.ServiceRequestStatusName,
+      ServiceRequestStatusSystemName: status.ServiceRequestStatusSystemName,
+      Sequence: status.Sequence?.toString() || "",
+      Description: status.Description || "",
+      ServiceRequestStatusCssClass: status.ServiceRequestStatusCssClass || "bg-blue-500",
+      IsOpen: status.IsOpen ?? true,
+      IsNoFurtherActionRequired: status.IsNoFurtherActionRequired ?? false,
+      IsAllowedForTechnician: status.IsAllowedForTechnician ?? false,
+    });
+    setIsEditOpen(true);
+  };
+
+  // ---- Update status ----
+  const handleUpdate = async () => {
+    if (!editingStatus || !formData.ServiceRequestStatusName.trim()) return;
+    setSubmitting(true);
+    try {
+      const res = await apiClient.patch(
+        `/api/admin/status-master/${editingStatus.ServiceRequestStatusID}`,
+        {
+          ServiceRequestStatusName: formData.ServiceRequestStatusName,
+          ServiceRequestStatusSystemName: formData.ServiceRequestStatusSystemName,
+          Sequence: formData.Sequence || undefined,
+          Description: formData.Description || undefined,
+          ServiceRequestStatusCssClass: formData.ServiceRequestStatusCssClass,
+          IsOpen: formData.IsOpen,
+          IsNoFurtherActionRequired: formData.IsNoFurtherActionRequired,
+          IsAllowedForTechnician: formData.IsAllowedForTechnician,
+        }
+      );
+      if (res.success) {
+        setIsEditOpen(false);
+        setEditingStatus(null);
+        setFormData(DEFAULT_FORM);
+        await fetchStatuses();
+      }
+    } catch (err) {
+      console.error("Failed to update status:", err);
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  // ---- Delete status ----
+  const handleDelete = async (id: number) => {
+    if (!confirm("Are you sure you want to delete this status?")) return;
+    try {
+      const res = await apiClient.delete(`/api/admin/status-master/${id}`);
+      if (res.success) {
+        setStatuses((prev) => prev.filter((s) => s.ServiceRequestStatusID !== id));
+      }
+    } catch (err) {
+      console.error("Failed to delete status:", err);
+    }
+  };
+
+  // ---- Helpers ----
+  const getBadgeStyle = (cssClass: string | null) => {
+    const match = COLOR_OPTIONS.find((c) => c.value === cssClass);
+    return match?.badge || "bg-slate-100 text-slate-700";
+  };
+
+  // ---- Form component (reused for create & edit) ----
+  const renderForm = (onSubmit: () => void, submitLabel: string) => (
+    <div className="grid gap-4 py-4">
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Status Name *</Label>
+          <Input
+            placeholder="e.g., Under Review"
+            value={formData.ServiceRequestStatusName}
+            onChange={(e) =>
+              setFormData({ ...formData, ServiceRequestStatusName: e.target.value })
+            }
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>System Name</Label>
+          <Input
+            placeholder="auto-generated if blank"
+            value={formData.ServiceRequestStatusSystemName}
+            onChange={(e) =>
+              setFormData({ ...formData, ServiceRequestStatusSystemName: e.target.value })
+            }
+          />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label>Sequence Order</Label>
+          <Input
+            type="number"
+            placeholder="e.g., 1"
+            value={formData.Sequence}
+            onChange={(e) => setFormData({ ...formData, Sequence: e.target.value })}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label>Description</Label>
+          <Input
+            placeholder="Brief description"
+            value={formData.Description}
+            onChange={(e) => setFormData({ ...formData, Description: e.target.value })}
+          />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label>Color Indicator</Label>
+        <div className="flex gap-2">
+          {COLOR_OPTIONS.map((color) => (
+            <button
+              key={color.value}
+              type="button"
+              onClick={() =>
+                setFormData({ ...formData, ServiceRequestStatusCssClass: color.value })
+              }
+              className={`h-8 w-8 rounded-full ${color.value} transition-all ${
+                formData.ServiceRequestStatusCssClass === color.value
+                  ? "ring-2 ring-primary ring-offset-2"
+                  : "ring-2 ring-transparent hover:ring-offset-2 hover:ring-primary/50"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+      <div className="space-y-4 pt-2">
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Is Open</p>
+            <p className="text-xs text-muted-foreground">Request is still active</p>
+          </div>
+          <Switch
+            checked={formData.IsOpen}
+            onCheckedChange={(val) => setFormData({ ...formData, IsOpen: val })}
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">No Further Action</p>
+            <p className="text-xs text-muted-foreground">Ticket is closed/cancelled</p>
+          </div>
+          <Switch
+            checked={formData.IsNoFurtherActionRequired}
+            onCheckedChange={(val) =>
+              setFormData({ ...formData, IsNoFurtherActionRequired: val })
+            }
+          />
+        </div>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div>
+            <p className="text-sm font-medium">Allowed for Technician</p>
+            <p className="text-xs text-muted-foreground">Technician can set this status</p>
+          </div>
+          <Switch
+            checked={formData.IsAllowedForTechnician}
+            onCheckedChange={(val) =>
+              setFormData({ ...formData, IsAllowedForTechnician: val })
+            }
+          />
+        </div>
+      </div>
+      <Button onClick={onSubmit} className="mt-2 gap-2" disabled={submitting}>
+        {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
+        {submitting ? "Saving..." : submitLabel}
+      </Button>
+    </div>
+  );
 
   return (
     <div className="space-y-6">
@@ -63,42 +307,26 @@ export default function StatusMaster() {
             Define workflow stages for service requests
           </p>
         </div>
-        <Dialog>
+
+        {/* Create Dialog */}
+        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
           <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/25">
+            <Button
+              className="gap-2 shadow-lg shadow-primary/25"
+              onClick={() => setFormData(DEFAULT_FORM)}
+            >
               <Plus className="h-4 w-4" />
               Add Status
             </Button>
           </DialogTrigger>
-          <DialogContent className="sm:max-w-[450px]">
+          <DialogContent className="sm:max-w-[520px]">
             <DialogHeader>
               <DialogTitle>Add New Status</DialogTitle>
               <DialogDescription>
                 Create a new status for the request workflow.
               </DialogDescription>
             </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label>Status Name</Label>
-                <Input placeholder="e.g., Under Review" />
-              </div>
-              <div className="space-y-2">
-                <Label>Color Indicator</Label>
-                <div className="flex gap-2">
-                  {["bg-amber-500", "bg-blue-500", "bg-emerald-500", "bg-orange-500", "bg-rose-500", "bg-violet-500"].map((color) => (
-                    <button
-                      key={color}
-                      className={`h-8 w-8 rounded-full ${color} ring-2 ring-transparent hover:ring-offset-2 hover:ring-primary transition-all`}
-                    />
-                  ))}
-                </div>
-              </div>
-              <div className="space-y-2">
-                <Label>Description</Label>
-                <Input placeholder="Brief description of this status" />
-              </div>
-              <Button className="mt-2">Create Status</Button>
-            </div>
+            {renderForm(handleCreate, "Create Status")}
           </DialogContent>
         </Dialog>
       </div>
@@ -112,7 +340,33 @@ export default function StatusMaster() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Statuses</p>
-              <p className="text-2xl font-bold">{statuses.length}</p>
+              <p className="text-2xl font-bold">{loading ? "—" : statuses.length}</p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-emerald-200 bg-emerald-50/50">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
+              <CheckSquare className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Open Statuses</p>
+              <p className="text-2xl font-bold text-emerald-600">
+                {loading ? "—" : statuses.filter((s) => s.IsOpen).length}
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+        <Card className="border-violet-200 bg-violet-50/50">
+          <CardContent className="flex items-center gap-4 p-6">
+            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-violet-100 text-violet-600">
+              <CheckSquare className="h-6 w-6" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-muted-foreground">Technician Allowed</p>
+              <p className="text-2xl font-bold text-violet-600">
+                {loading ? "—" : statuses.filter((s) => s.IsAllowedForTechnician).length}
+              </p>
             </div>
           </CardContent>
         </Card>
@@ -121,42 +375,115 @@ export default function StatusMaster() {
       {/* Table */}
       <Card>
         <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Status Name</TableHead>
-                <TableHead className="font-semibold">Indicator</TableHead>
-                <TableHead className="font-semibold">Description</TableHead>
-                <TableHead className="text-right font-semibold">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {statuses.map((s) => (
-                <TableRow key={s.id} className="group">
-                  <TableCell className="font-medium">{s.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <div className={`h-3 w-3 rounded-full ${s.color}`} />
-                      {getStatusBadge(s.name, s.color)}
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">{s.description}</TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
-                        <Edit3 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+          {loading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : statuses.length === 0 ? (
+            <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <CheckSquare className="mb-2 h-10 w-10 opacity-30" />
+              <p className="font-medium">No statuses defined</p>
+              <p className="text-sm">Click &quot;Add Status&quot; to create the first workflow stage.</p>
+            </div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold w-12">#</TableHead>
+                  <TableHead className="font-semibold">Status Name</TableHead>
+                  <TableHead className="font-semibold">Badge</TableHead>
+                  <TableHead className="font-semibold">Description</TableHead>
+                  <TableHead className="font-semibold text-center">Open</TableHead>
+                  <TableHead className="font-semibold text-center">Technician</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {statuses.map((s) => (
+                  <TableRow key={s.ServiceRequestStatusID} className="group">
+                    <TableCell className="font-mono text-muted-foreground">
+                      {s.Sequence ?? s.ServiceRequestStatusID}
+                    </TableCell>
+                    <TableCell>
+                      <div className="space-y-1">
+                        <p className="font-medium">{s.ServiceRequestStatusName}</p>
+                        <p className="text-xs text-muted-foreground font-mono">
+                          {s.ServiceRequestStatusSystemName}
+                        </p>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className={`h-3 w-3 rounded-full ${
+                            s.ServiceRequestStatusCssClass || "bg-slate-500"
+                          }`}
+                        />
+                        <Badge className={getBadgeStyle(s.ServiceRequestStatusCssClass)}>
+                          {s.ServiceRequestStatusName}
+                        </Badge>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-muted-foreground max-w-[200px] truncate">
+                      {s.Description || "—"}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {s.IsOpen ? (
+                        <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Yes</Badge>
+                      ) : (
+                        <Badge variant="secondary">No</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-center">
+                      {s.IsAllowedForTechnician ? (
+                        <Badge className="bg-violet-100 text-violet-700 hover:bg-violet-100">Yes</Badge>
+                      ) : (
+                        <Badge variant="secondary">No</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary"
+                          onClick={() => openEdit(s)}
+                        >
+                          <Edit3 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive"
+                          onClick={() => handleDelete(s.ServiceRequestStatusID)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
         </CardContent>
       </Card>
+
+      {/* Edit Dialog */}
+      <Dialog open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <DialogContent className="sm:max-w-[520px]">
+          <DialogHeader>
+            <DialogTitle>Edit Status</DialogTitle>
+            <DialogDescription>
+              Update status:{" "}
+              <span className="font-mono font-semibold">
+                {editingStatus?.ServiceRequestStatusName}
+              </span>
+            </DialogDescription>
+          </DialogHeader>
+          {renderForm(handleUpdate, "Save Changes")}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

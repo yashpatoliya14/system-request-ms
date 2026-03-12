@@ -1,11 +1,20 @@
 "use client";
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { Zap, Briefcase, History, LogOut } from 'lucide-react';
+import { getCookie } from '@/lib/cookie';
 
 export default function PortalSidebar() {
   const pathname = usePathname();
+  const [role, setRole] = useState(getCookie("user_role"));
+
+  useEffect(() => {
+    const role = getCookie("user_role");
+    if (role) {
+      setRole(role);
+    }
+  }, []);
 
   // --- LOGOUT FUNCTION ---
   const handleLogout = () => {
@@ -15,7 +24,7 @@ export default function PortalSidebar() {
 
   const menuItems = [
     { name: 'Operations Hub', icon: <Zap size={20} />, href: '/portal-dashboard' },
-    { name: 'Technician View', icon: <Briefcase size={20} />, href: '/technician' },
+    ...(role === "technician" ? [{ name: 'Technician View', icon: <Briefcase size={20} />, href: '/technician' }] : []),
     { name: 'Request Details', icon: <History size={20} />, href: '/request-details' },
   ];
 
@@ -32,9 +41,8 @@ export default function PortalSidebar() {
         <p className="px-6 text-[10px] font-black text-slate-400 uppercase tracking-[0.3em] mb-4">User Menu</p>
         {menuItems.map((item) => (
           <Link key={item.href} href={item.href}
-            className={`flex items-center gap-4 px-6 py-4 rounded-[24px] text-sm font-black transition-all ${
-              pathname === item.href ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-600'
-            }`}
+            className={`flex items-center gap-4 px-6 py-4 rounded-[24px] text-sm font-black transition-all ${pathname === item.href ? 'bg-blue-600 text-white shadow-xl' : 'text-slate-400 hover:bg-slate-50 hover:text-blue-600'
+              }`}
           >
             {item.icon} {item.name}
           </Link>
@@ -42,7 +50,7 @@ export default function PortalSidebar() {
       </nav>
 
       <div className="p-6 border-t border-slate-50">
-        <button 
+        <button
           onClick={handleLogout}
           className="flex items-center justify-center gap-3 w-full px-4 py-4 bg-slate-900 text-white rounded-[20px] transition-all font-black text-xs uppercase tracking-widest hover:bg-red-500 shadow-lg"
         >

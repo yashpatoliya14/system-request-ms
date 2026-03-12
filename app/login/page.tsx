@@ -56,7 +56,14 @@ export default function LoginPage() {
     try {
       const res = await apiClient.post("/api/auth/login", { Email: result.data.email, Password: result.data.password });
       if (res.success) {
-        router.push("/admin-dashboard");
+        // Redirect based on user role
+        const role = (res.data as any)?.[0]?.Role?.toLowerCase() ?? "user";
+        const dashboardMap: Record<string, string> = {
+          admin: "/admin-dashboard",
+          hod: "/hod-dashboard",
+          user: "/portal-dashboard",
+        };
+        router.push(dashboardMap[role] || "/portal-dashboard");
       }
     } catch (error) {
       console.error(error);

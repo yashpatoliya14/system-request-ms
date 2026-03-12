@@ -1,27 +1,20 @@
 "use client";
 
-import React, { useState } from "react";
-import { Settings2, Plus, Edit2, Trash2, Save, Clock } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import React, { useState, useEffect, useCallback } from "react";
+import { Settings2, Plus, Edit2, Trash2, Loader2, AlertCircle } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
   Dialog,
   DialogContent,
   DialogDescription,
+  DialogFooter,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -30,83 +23,128 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { apiClient } from "@/lib/apiClient";
+
+interface ServiceType {
+  ServiceTypeID: string;
+  ServiceTypeName: string;
+}
 
 export default function ServiceTypeMaster() {
-  const [departments] = useState([
-    { id: 1, name: "IT Support" },
-    { id: 2, name: "Electrical" },
-    { id: 3, name: "Maintenance" },
-  ]);
+  const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
 
-  const [serviceTypes, setServiceTypes] = useState([
-    { id: 1, deptId: 1, name: "Hardware Repair", days: 2, status: "Active" },
-    { id: 2, deptId: 1, name: "Software Installation", days: 1, status: "Active" },
-    { id: 3, deptId: 2, name: "Wiring Issue", days: 3, status: "Active" },
-    { id: 4, deptId: 3, name: "AC Maintenance", days: 2, status: "Active" },
-  ]);
+  // Create dialog state
+  const [createOpen, setCreateOpen] = useState(false);
+  const [createName, setCreateName] = useState("");
+  const [creating, setCreating] = useState(false);
 
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [editId, setEditId] = useState<number | null>(null);
-  const [formData, setFormData] = useState({
-    deptId: "",
-    name: "",
-    days: 1,
-    status: "Active",
-  });
+  // Edit dialog state
+  const [editOpen, setEditOpen] = useState(false);
+  const [editItem, setEditItem] = useState<ServiceType | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editing, setEditing] = useState(false);
 
-  const handleSave = () => {
-    if (!formData.deptId || !formData.name) {
-      return;
+  // Delete dialog state
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [deleteItem, setDeleteItem] = useState<ServiceType | null>(null);
+  const [deleting, setDeleting] = useState(false);
+
+  // Fetch all service types
+  const fetchServiceTypes = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await apiClient.get<ServiceType[]>("/api/admin/service-type");
+      if (res.success) {
+        setServiceTypes(res.data ?? []);
+      } else {
+        setError(res.message);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load service types");
+    } finally {
+      setLoading(false);
     }
+  }, []);
 
-    if (editId !== null) {
-      setServiceTypes(
-        serviceTypes.map((st) =>
-          st.id === editId
-            ? { ...st, deptId: Number(formData.deptId), name: formData.name, days: formData.days, status: formData.status }
-            : st
-        )
-      );
-    } else {
-      const newId = Math.max(0, ...serviceTypes.map((s) => s.id)) + 1;
-      setServiceTypes([
-        ...serviceTypes,
-        {
-          id: newId,
-          deptId: Number(formData.deptId),
-          name: formData.name,
-          days: formData.days,
-          status: formData.status,
-        },
-      ]);
-    }
-    closeModal();
-  };
+  useEffect(() => {
+    fetchServiceTypes();
+  }, [fetchServiceTypes]);
 
-  const handleDelete = (id: number) => {
-    if (confirm("Delete this service type?")) {
-      setServiceTypes(serviceTypes.filter((s) => s.id !== id));
+  // Create service type
+  const handleCreate = async () => {
+    if (!createName.trim()) return;
+    try {
+      setCreating(true);
+      const res = await apiClient.post("/api/admin/service-type", { ServiceTypeName: createName.trim() });
+      if (res.success) {
+        setCreateName("");
+        setCreateOpen(false);
+        fetchServiceTypes();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to create service type");
+    } finally {
+      setCreating(false);
     }
   };
 
-  const handleEdit = (item: typeof serviceTypes[0]) => {
-    setEditId(item.id);
-    setFormData({
-      deptId: item.deptId.toString(),
-      name: item.name,
-      days: item.days,
-      status: item.status,
-    });
-    setIsModalOpen(true);
+  // Update service type
+  const handleUpdate = async () => {
+    if (!editItem || !editName.trim()) return;
+    try {
+      setEditing(true);
+      const res = await apiClient.patch(`/api/admin/service-type/${editItem.ServiceTypeID}`, {
+        ServiceTypeName: editName.trim(),
+      });
+      if (res.success) {
+        setEditOpen(false);
+        setEditItem(null);
+        setEditName("");
+        fetchServiceTypes();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to update service type");
+    } finally {
+      setEditing(false);
+    }
   };
 
-  const closeModal = () => {
-    setIsModalOpen(false);
-    setEditId(null);
-    setFormData({ deptId: "", name: "", days: 1, status: "Active" });
+  // Delete service type
+  const handleDelete = async () => {
+    if (!deleteItem) return;
+    try {
+      setDeleting(true);
+      const res = await apiClient.delete(`/api/admin/service-type/${deleteItem.ServiceTypeID}`);
+      if (res.success) {
+        setDeleteOpen(false);
+        fetchServiceTypes();
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to delete service type");
+    } finally {
+      setDeleting(false);
+    }
   };
 
-  const getDeptName = (id: number) => departments.find((d) => d.id === id)?.name || "Unknown";
+  // Open edit dialog
+  const openEdit = (item: ServiceType) => {
+    setEditItem(item);
+    setEditName(item.ServiceTypeName ?? "");
+    setEditOpen(true);
+  };
+
+  // Open delete dialog
+  const openDelete = (item: ServiceType) => {
+    setDeleteItem(item);
+    setDeleteOpen(true);
+  };
 
   return (
     <div className="space-y-6">
@@ -120,69 +158,66 @@ export default function ServiceTypeMaster() {
             <h1 className="text-3xl font-bold tracking-tight">Service Type Master</h1>
           </div>
           <p className="text-muted-foreground">
-            Manage issue categories for each department
+            Manage service type categories
           </p>
         </div>
-        <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+
+        {/* Create Dialog */}
+        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button className="gap-2 shadow-lg shadow-primary/25">
               <Plus className="h-4 w-4" />
-              Add New Type
+              Add Service Type
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[450px]">
             <DialogHeader>
-              <DialogTitle>{editId ? "Edit" : "Add"} Service Type</DialogTitle>
+              <DialogTitle>Add New Service Type</DialogTitle>
               <DialogDescription>
-                {editId ? "Update the service type details." : "Create a new service type for a department."}
+                Create a new service type for your organization.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4">
               <div className="space-y-2">
-                <Label>Select Department</Label>
-                <Select value={formData.deptId} onValueChange={(value) => setFormData({ ...formData, deptId: value })}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Choose Department..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {departments.map((d) => (
-                      <SelectItem key={d.id} value={d.id.toString()}>
-                        {d.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-2">
-                <Label>Service Type Name</Label>
+                <Label htmlFor="create-name">Service Type Name</Label>
                 <Input
-                  placeholder="e.g. Printer Issue"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  id="create-name"
+                  placeholder="e.g., Hardware Repair"
+                  value={createName}
+                  onChange={(e) => setCreateName(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
                 />
-              </div>
-              <div className="space-y-2">
-                <Label>Resolution Days (SLA)</Label>
-                <Input
-                  type="number"
-                  min={1}
-                  value={formData.days}
-                  onChange={(e) => setFormData({ ...formData, days: parseInt(e.target.value) || 1 })}
-                />
-              </div>
-              <div className="flex gap-3 pt-2">
-                <Button onClick={handleSave} className="flex-1 gap-2">
-                  <Save className="h-4 w-4" />
-                  Save Type
-                </Button>
-                <Button variant="outline" className="flex-1" onClick={closeModal}>
-                  Cancel
-                </Button>
               </div>
             </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                Cancel
+              </Button>
+              <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
+                {creating ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Creating...
+                  </>
+                ) : (
+                  "Create Service Type"
+                )}
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm font-medium text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+          <button onClick={() => setError("")} className="ml-auto text-xs underline">
+            Dismiss
+          </button>
+        </div>
+      )}
 
       {/* Stats */}
       <div className="grid gap-4 sm:grid-cols-3">
@@ -193,78 +228,145 @@ export default function ServiceTypeMaster() {
             </div>
             <div>
               <p className="text-sm font-medium text-muted-foreground">Total Types</p>
-              <p className="text-2xl font-bold">{serviceTypes.length}</p>
-            </div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="flex items-center gap-4 p-6">
-            <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-emerald-100 text-emerald-600">
-              <Clock className="h-6 w-6" />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-muted-foreground">Avg SLA</p>
-              <p className="text-2xl font-bold">
-                {(serviceTypes.reduce((acc, s) => acc + s.days, 0) / serviceTypes.length).toFixed(1)} Days
-              </p>
+              <p className="text-2xl font-bold">{loading ? "—" : serviceTypes.length}</p>
             </div>
           </CardContent>
         </Card>
       </div>
 
+      {/* Loading State */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
+
+      {/* Empty State */}
+      {!loading && serviceTypes.length === 0 && (
+        <Card className="border-dashed">
+          <CardContent className="flex flex-col items-center justify-center py-16 text-center">
+            <Settings2 className="mb-4 h-12 w-12 text-muted-foreground/50" />
+            <h3 className="text-lg font-semibold">No service types yet</h3>
+            <p className="text-sm text-muted-foreground mt-1">
+              Get started by adding your first service type.
+            </p>
+            <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
+              <Plus className="h-4 w-4" />
+              Add Service Type
+            </Button>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="bg-muted/50">
-                <TableHead className="font-semibold">Department</TableHead>
-                <TableHead className="font-semibold">Service Type Name</TableHead>
-                <TableHead className="font-semibold">SLA Days</TableHead>
-                <TableHead className="text-right font-semibold">Actions</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {serviceTypes.map((item) => (
-                <TableRow key={item.id} className="group">
-                  <TableCell>
-                    <Badge className="bg-primary/10 text-primary hover:bg-primary/10">
-                      {getDeptName(item.deptId)}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="font-medium">{item.name}</TableCell>
-                  <TableCell>
-                    <div className="flex items-center gap-2">
-                      <Clock className="h-4 w-4 text-muted-foreground" />
-                      <span className="font-medium">{item.days} Days</span>
-                    </div>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                        onClick={() => handleEdit(item)}
-                      >
-                        <Edit2 className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
-                        onClick={() => handleDelete(item.id)}
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+      {!loading && serviceTypes.length > 0 && (
+        <Card>
+          <CardContent className="p-0">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="font-semibold">#</TableHead>
+                  <TableHead className="font-semibold">Service Type Name</TableHead>
+                  <TableHead className="text-right font-semibold">Actions</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+              </TableHeader>
+              <TableBody>
+                {serviceTypes.map((item, index) => (
+                  <TableRow key={item.ServiceTypeID} className="group">
+                    <TableCell className="text-muted-foreground">{index + 1}</TableCell>
+                    <TableCell className="font-medium">{item.ServiceTypeName}</TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
+                          onClick={() => openEdit(item)}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          onClick={() => openDelete(item)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[450px]">
+          <DialogHeader>
+            <DialogTitle>Edit Service Type</DialogTitle>
+            <DialogDescription>
+              Update the service type name.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="edit-name">Service Type Name</Label>
+              <Input
+                id="edit-name"
+                value={editName}
+                onChange={(e) => setEditName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleUpdate()}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleUpdate} disabled={editing || !editName.trim()}>
+              {editing ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                "Save Changes"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Delete Service Type</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to delete <strong>{deleteItem?.ServiceTypeName}</strong>? This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={handleDelete} disabled={deleting}>
+              {deleting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Deleting...
+                </>
+              ) : (
+                "Delete"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

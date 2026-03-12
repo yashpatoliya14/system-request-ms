@@ -1,3 +1,4 @@
+import { getDetailsFromToken } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -19,6 +20,13 @@ interface IDepartmentResponse {
 export async function POST(req: NextRequest) {
     try {
 
+        const user = await getDetailsFromToken(req)
+        if (!user) {
+            return NextResponse.json({ success: false, message: "User Not Found", data: [] }, { status: 400 });
+        }
+        if(user.role !== "admin") {
+            return NextResponse.json({ success: false, message: "Unauthorized", data: [] }, { status: 401 });
+        }
         const body = await req.json();
         const { DeptName } = body;
 
