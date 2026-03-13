@@ -177,7 +177,7 @@ function VerifyOtpContent() {
                         {/* Back to Login */}
                         <div className="mt-3 text-center text-sm text-muted-foreground">
                             <button
-                                onClick={() => router.push("/login")}
+                                onClick={() => router.replace("/login")}
                                 className="font-medium text-primary transition-colors hover:text-primary/80"
                             >
                                 ← Back to Login

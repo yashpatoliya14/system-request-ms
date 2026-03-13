@@ -242,7 +242,7 @@ export default function SignupPage() {
                         <div className="mt-4 text-center text-sm text-muted-foreground">
                             Already have an account?{" "}
                             <button
-                                onClick={() => router.push("/login")}
+                                onClick={() => router.replace("/login")}
                                 className="font-medium text-primary transition-colors hover:text-primary/80"
                             >
                                 Sign in

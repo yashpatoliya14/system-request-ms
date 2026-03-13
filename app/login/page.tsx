@@ -64,7 +64,7 @@ export default function LoginPage() {
     }
 
     if (needsPasswordReset) {
-      router.push("/reset-password")
+      router.replace("/reset-password")
       return { errors: {}, message: "" };
     }
     
@@ -78,7 +78,7 @@ export default function LoginPage() {
             hod: "/hod-dashboard",
             user: "/portal-dashboard",
           };
-          router.push(dashboardMap[role] || "/portal-dashboard");
+          router.replace(dashboardMap[role] || "/portal-dashboard");
           return { errors: {}, message: "" };
         } else {
           return { errors: {}, message: res.message || "Invalid credentials" };
@@ -176,12 +176,12 @@ export default function LoginPage() {
             </form>
 
             <div className="mt-4 flex items-center justify-between text-sm text-muted-foreground">
-              <button type="button" onClick={() => router.push("/reset-password")} className="font-medium text-primary transition-colors hover:text-primary/80">
+              <button type="button" onClick={() => router.replace("/reset-password")} className="font-medium text-primary transition-colors hover:text-primary/80">
                 Forgot Password?
               </button>
               <span>
                 Don&apos;t have an account?{" "}
-                <button onClick={() => router.push("/signup")} className="font-medium text-primary transition-colors hover:text-primary/80">
+                <button onClick={() => router.replace("/signup")} className="font-medium text-primary transition-colors hover:text-primary/80">
                   Sign up
                 </button>
               </span>

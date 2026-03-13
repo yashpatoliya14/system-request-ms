@@ -74,7 +74,7 @@ function NewPasswordContent() {
                 Password: result.data.password,
             });
             if (res.success) {
-                router.push("/login");
+                router.replace("/login");
             } else {
                 return {
                     errors: {},
@@ -233,7 +233,7 @@ function NewPasswordContent() {
                         <div className="mt-4 text-center text-sm text-muted-foreground">
                             Remember your password?{" "}
                             <button
-                                onClick={() => router.push("/login")}
+                                onClick={() => router.replace("/login")}
                                 className="font-medium text-primary transition-colors hover:text-primary/80"
                             >
                                 Back to Login

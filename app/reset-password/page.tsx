@@ -53,7 +53,7 @@ export default function ResetPasswordPage() {
         try {
             const res = await apiClient.post("/api/auth/send_reset_otp", result.data);
             if (res.success) {
-                router.push(
+                router.replace(
                     "/verify-otp?email=" + encodeURIComponent(result.data.Email) + "&isForgotPassword=true",
                 );
             }
@@ -166,7 +166,7 @@ export default function ResetPasswordPage() {
                         <div className="mt-4 text-center text-sm text-muted-foreground">
                             Remember your password?{" "}
                             <button
-                                onClick={() => router.push("/login")}
+                                onClick={() => router.replace("/login")}
                                 className="font-medium text-primary transition-colors hover:text-primary/80"
                             >
                                 Back to Login
