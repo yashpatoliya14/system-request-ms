@@ -167,7 +167,7 @@ export default function DepartmentPersonMaster() {
                         <Badge variant="secondary">{person.dept}</Badge>
                       </div>
                     </div>
-                    <div className="flex gap-1 opacity-0 transition-opacity group-hover:opacity-100">
+                    <div className="flex gap-1 opacity-100 transition-opacity">
                       <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-primary">
                         <Edit2 className="h-4 w-4" />
                       </Button>
