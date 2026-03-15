@@ -2,7 +2,7 @@
 
 import React from "react";
 import Link from "next/link";
-import { ShieldCheck, Users, Zap, ArrowRight, Sparkles } from "lucide-react";
+import { ShieldCheck, Users, Zap, Wrench, ArrowRight, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 
@@ -32,10 +32,18 @@ export default function Home() {
       gradient: "from-blue-500 to-cyan-500",
       credentials: "user@service.com / user123",
     },
+    {
+      title: "Technician Dashboard",
+      description: "Workspace for technicians to view assigned tickets, update statuses, and resolve requests.",
+      icon: Wrench,
+      href: "/technician",
+      gradient: "from-orange-500 to-amber-500",
+      credentials: "tech@service.com / tech123",
+    },
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       {/* Background decoration */}
       <div className="pointer-events-none fixed inset-0 overflow-hidden">
         <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-primary/10 blur-3xl" />
@@ -62,17 +70,17 @@ export default function Home() {
         </div>
 
         {/* Dashboard Cards */}
-        <div className="grid gap-6 md:grid-cols-3">
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
           {dashboards.map((dashboard, i) => (
             <Card
               key={i}
-              className="group relative overflow-hidden border-border/50 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5"
+              className="group relative overflow-hidden border-border/50 transition-all duration-300 hover:border-primary/30 hover:shadow-xl hover:shadow-primary/5 flex flex-col"
             >
               {/* Gradient accent */}
-              <div className={`absolute inset-x-0 top-0 h-1 bg-gradient-to-r ${dashboard.gradient}`} />
+              <div className={`absolute inset-x-0 top-0 h-1 bg-linear-to-r ${dashboard.gradient}`} />
 
-              <CardHeader className="pb-4">
-                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${dashboard.gradient} text-white shadow-lg transition-transform duration-300 group-hover:scale-110`}>
+              <CardHeader className="pb-4 grow">
+                <div className={`mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-linear-to-br ${dashboard.gradient} text-white shadow-lg transition-transform duration-300 group-hover:scale-110`}>
                   <dashboard.icon className="h-7 w-7" />
                 </div>
                 <CardTitle className="text-xl">{dashboard.title}</CardTitle>
@@ -81,7 +89,7 @@ export default function Home() {
                 </CardDescription>
               </CardHeader>
 
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 pt-0">
                 <div className="rounded-lg border bg-muted/30 p-3">
                   <p className="mb-1 text-xs font-medium text-muted-foreground">Demo Credentials</p>
                   <code className="text-xs">{dashboard.credentials}</code>
@@ -115,7 +123,7 @@ export default function Home() {
         <div className="mt-20 grid gap-8 border-t pt-16 md:grid-cols-3">
           {[
             { title: "Modern UI", desc: "Beautiful shadcn/ui components with smooth animations" },
-            { title: "Role-Based Access", desc: "Separate dashboards for Admin, HOD, and Users" },
+            { title: "Role-Based Access", desc: "Separate dashboards for Admin, HOD, Users, and Technicians" },
             { title: "Request Management", desc: "Complete CRUD operations for service requests" },
           ].map((feature, i) => (
             <div key={i} className="text-center">

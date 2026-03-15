@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
         const otp = Math.floor(100000 + Math.random() * 900000).toString();
         const otpExpiry = new Date(Date.now() + 10 * 60 * 1000);
 
-        let status: boolean = await sendOtpViaEmail(Email, otp);
+        const status: boolean = await sendOtpViaEmail(Email, otp);
 
         if (status) {
             const user = await prisma.tempUser.update({

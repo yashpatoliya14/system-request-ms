@@ -53,6 +53,7 @@ export function getDetailsFromToken(request: NextRequest): TokenPayload | null {
             return null;
         }
 
+        // it verify and send the data 
         return verifyToken(token);
     } catch {
         return null;
