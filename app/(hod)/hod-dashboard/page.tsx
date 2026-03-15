@@ -61,9 +61,9 @@ interface DeptPerson {
   ServiceDepartment?: { DeptName: string } | null;
 }
 
-interface Status {
-  StatusID: string;
-  StatusName: string;
+interface ServiceRequestStatus {
+  ServiceRequestStatusID: string;
+  ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
 }
 
@@ -73,11 +73,12 @@ export default function HODDashboard() {
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
 
   const [selectedRequest, setSelectedRequest] = useState<ServiceRequest | null>(null);
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
-  const [status, setStatus] = useState<Status[]>([]);
+  const [statuses, setStatuses] = useState<ServiceRequestStatus[]>([]);
 
   // ---- Fetch all requests ----
   const fetchRequests = async () => {
@@ -97,11 +98,12 @@ export default function HODDashboard() {
     }
   };
 
-  const fetchStatus = async () => {
+  const fetchStatuses = async () => {
     try {
-      const res = await apiClient.get<Status[]>("/api/admin/service-status");
+      const res = await apiClient.get<ServiceRequestStatus[]>("/api/admin/status-master");
       if (res.success && res.data) {
-        setStatus(res.data);
+        setStatuses(res.data);
+        
       }
     } catch (err) {
       console.error("Failed to fetch status:", err);
@@ -123,7 +125,7 @@ export default function HODDashboard() {
   useEffect(() => {
     fetchRequests();
     fetchTechnicians();
-    fetchStatus();
+    fetchStatuses();
   }, []);
 
   // ---- Assign technician to request ----
@@ -160,8 +162,8 @@ export default function HODDashboard() {
   const getStatusLabel = (statusId: string | null) => {
     if (!statusId) return "Pending";
     const id = Number(statusId);
-    if (status.find((s) => String(s.StatusID) === String(id))) {
-      return status.find((s) => String(s.StatusID) === String(id))?.StatusName;
+    if (statuses.find((s) => String(s.ServiceRequestStatusID) === String(id))) {
+      return statuses.find((s) => String(s.ServiceRequestStatusID) === String(id))?.ServiceRequestStatusName;
     }
     return "Pending";
   };
@@ -183,15 +185,22 @@ export default function HODDashboard() {
     return tech?.Users?.FullName || "Assigned";
   };
 
-  // Filter by search
+  // Filter Logic
   const filteredRequests = requests.filter((r) => {
-    if (!searchQuery) return true;
+    // Search filter
     const q = searchQuery.toLowerCase();
-    return (
+    const matchesSearch =
+      !searchQuery ||
       r.Title?.toLowerCase().includes(q) ||
       String(r.ServiceRequestID).includes(q) ||
-      r.Users?.FullName?.toLowerCase().includes(q)
-    );
+      r.Users?.FullName?.toLowerCase().includes(q);
+
+    // Status filter
+    const matchesStatus =
+        statusFilter === "all" ||
+        getStatusLabel(r.StatusID) === statusFilter;
+
+    return matchesSearch && matchesStatus;
   });
 
   // Stats
@@ -275,21 +284,37 @@ export default function HODDashboard() {
       {/* Request Table */}
       <Card>
         <CardHeader className="border-b">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
             <CardTitle>All Service Requests</CardTitle>
-            <div className="flex gap-2">
-              <div className="relative">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="w-full sm:w-64 relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by title, ID, or requester..."
-                  className="w-64 pl-9"
+                  className="pl-9"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
+              <select 
+                className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-36"
+                value={statusFilter} 
+                onChange={(e) => setStatusFilter(e.target.value)}
+              >
+                <option value="all">All Statuses</option>
+                {statuses.map(s => (
+                  <option key={s.ServiceRequestStatusID} value={s.ServiceRequestStatusName}>
+                    {s.ServiceRequestStatusName}
+                  </option>
+                ))}
+                {statuses.length === 0 && (
+                  <>
+                    <option value="Pending">Pending</option>
+                    <option value="In Progress">In Progress</option>
+                    <option value="Completed">Completed</option>
+                  </>
+                )}
+              </select>
             </div>
           </div>
         </CardHeader>
@@ -371,7 +396,7 @@ export default function HODDashboard() {
                       </TableCell>
                       <TableCell className="text-right">
                         {isUnassigned(req) ? (
-                          status?.toLowerCase() !== "completed" && String(req.StatusID) !== "4" ? (
+                          status?.toLowerCase() !== "completed" ? (
                             <Button
                               size="sm"
                               className="gap-1"

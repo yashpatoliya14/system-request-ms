@@ -3,68 +3,52 @@ import { jwtVerify } from "jose";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-super-secret-jwt-key-change-in-production";
 
-// Pages that don't require authentication
-const PUBLIC_PATHS = [
-    "/",
-    "/login",
-    "/signup",
-    "/verify-otp",
-    "/reset-password",
-    "/new-password",
-    "/api/auth/login",
-    "/api/auth/signup",
-    "/api/auth/logout",
-    "/api/auth/verify_otp",
-    "/api/auth/send_reset_otp",
-    "/api/auth/reset_password",
-    "/api/auth/resend_otp",
-    "/api/auth/is_dept_person",
-];
-// Routes accessible to ALL authenticated users (no role check needed)
-const AUTHENTICATED_PATHS = [
-    "/api/auth/me",
-    "/api/auth/logout",
-];
+// Use Sets for faster `has` lookups
+const PUBLIC_PATHS = new Set([
+    "/", "/login", "/signup", "/verify-otp", "/reset-password", "/new-password",
+    "/api/auth/login", "/api/auth/signup", "/api/auth/logout", "/api/auth/verify_otp",
+    "/api/auth/send_reset_otp", "/api/auth/reset_password", "/api/auth/resend_otp",
+    "/api/auth/is_dept_person"
+]);
 
-// Which routes each role can access
+const AUTHENTICATED_PATHS = new Set(["/api/auth/me", "/api/auth/logout"]);
+
+// Shared route groups to avoid repetition
+const PORTAL_ROUTES = ["/portal-dashboard", "/request-details", "/technician", "/api/portal"];
+const CHAT_ROUTES = ["/api/chat"];
+const ADMIN_READ_ROUTES = ["/api/admin/department", "/api/admin/service-request-type"];
+
 const ROLE_ROUTES: Record<string, string[]> = {
     admin: [
         "/admin-dashboard", "/dept-master", "/dept-person",
         "/department-person-master", "/request-type", "/service-type",
         "/status-master", "/type-mapping", "/request-mapping",
-        "/api/admin","/api/chat",
-        "/api/chat/:id",
-        // Admin can also access HOD and portal routes
-        "/hod-dashboard", "/api/hod","/api/chat",
-        "/api/chat/:id",    
-        "/portal-dashboard", "/request-details", "/technician", "/api/portal",
+        "/api/admin",
+        "/hod-dashboard", "/api/hod",
+        ...PORTAL_ROUTES,
+        ...CHAT_ROUTES
     ],
     hod: [
         "/hod-dashboard", "/api/hod",
-        // HOD can also access portal routes
-        "/portal-dashboard", "/request-details", "/technician", "/api/portal",
-        // Allow reading departments, request types & personnel for forms
-        "/api/admin/department", "/api/admin/service-request-type", "/api/admin/person-master",
+        "/api/admin/person-master",
+        ...PORTAL_ROUTES,
+        ...ADMIN_READ_ROUTES,
+        ...CHAT_ROUTES
     ],
     user: [
-        "/portal-dashboard", "/request-details", "/api/portal",
-        // Allow reading departments & request types for forms
-        "/api/admin/department", "/api/admin/service-request-type",
-        "/api/portal/requestor","/api/chat",
-        "/api/chat/:id",
-
+        "/api/portal/requestor",
+        ...PORTAL_ROUTES,
+        ...ADMIN_READ_ROUTES,
+        ...CHAT_ROUTES
     ],
     technician: [
-        "/portal-dashboard", "/request-details", "/technician", "/api/portal",
-        // Allow reading departments & request types for forms
-        "/api/admin/department", "/api/admin/service-request-type",
-        "/api/admin/status-master", "/api/auth/me","/api/portal/technician",
-        "/api/chat",
-        "/api/chat/:id",
+        "/api/admin/status-master", "/api/portal/technician",
+        ...PORTAL_ROUTES,
+        ...ADMIN_READ_ROUTES,
+        ...CHAT_ROUTES
     ],
 };
 
-// Default dashboard for each role
 const ROLE_DASHBOARD: Record<string, string> = {
     admin: "/admin-dashboard",
     hod: "/hod-dashboard",
@@ -74,103 +58,68 @@ const ROLE_DASHBOARD: Record<string, string> = {
 
 export async function middleware(request: NextRequest) {
     const { pathname } = request.nextUrl;
+    const isApiRequest = pathname.startsWith("/api/");
+    const token = request.cookies.get("auth_token")?.value;
 
-    // Skip static assets
-    if (
-        pathname.startsWith("/_next") ||
-        pathname.startsWith("/favicon") ||
-        pathname.includes(".")
-    ) {
-        return NextResponse.next();
-    }
+    // Helper to return consistent error responses
+    const rejectRequest = (message: string, status: number, redirectUrl: string) => 
+        isApiRequest 
+            ? NextResponse.json({ success: false, message }, { status }) 
+            : NextResponse.redirect(new URL(redirectUrl, request.url));
 
-    // Public paths — allow through (but redirect logged-in users away from /login)
-    if (PUBLIC_PATHS.some((path) => pathname === path || pathname.startsWith(path + "/"))) {
-        const token = request.cookies.get("auth_token")?.value;
+    // Public paths
+    if (PUBLIC_PATHS.has(pathname) || [...PUBLIC_PATHS].some(p => pathname.startsWith(`${p}/`))) {
         if (token && pathname === "/login") {
             try {
-                const secret = new TextEncoder().encode(JWT_SECRET);
-                const { payload } = await jwtVerify(token, secret);
-                const role = (payload.role as string).toLowerCase();
-                const dashboard = ROLE_DASHBOARD[role] || "/portal-dashboard";
+                const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET));
+                const dashboard = ROLE_DASHBOARD[(payload.role as string).toLowerCase()] || "/portal-dashboard";
                 return NextResponse.redirect(new URL(dashboard, request.url));
             } catch {
-                // Token invalid, let them stay on login
+                // Invalid token; proceed to login page
             }
         }
         return NextResponse.next();
     }
 
-    // Protected paths — require auth token
-    const token = request.cookies.get("auth_token")?.value;
-
     if (!token) {
-        if (pathname.startsWith("/api/")) {
-            return NextResponse.json(
-                { success: false, message: "Authentication required" },
-                { status: 401 }
-            );
-        }
-        return NextResponse.redirect(new URL("/login", request.url));
+        return rejectRequest("Authentication required", 401, "/login");
     }
 
     try {
-        const secret = new TextEncoder().encode(JWT_SECRET);
-        const { payload } = await jwtVerify(token, secret);
+        const { payload } = await jwtVerify(token, new TextEncoder().encode(JWT_SECRET));
         const userRole = (payload.role as string).toLowerCase();
 
-        // Allow authenticated-only routes (no role check needed)
-        if (AUTHENTICATED_PATHS.some((p) => pathname.startsWith(p))) {
+        if (AUTHENTICATED_PATHS.has(pathname) || [...AUTHENTICATED_PATHS].some(p => pathname.startsWith(`${p}/`))) {
             return NextResponse.next();
         }
 
-        // Check role-based access
-        const allowedRoutes = ROLE_ROUTES[userRole];
+        const allowedRoutes = ROLE_ROUTES[userRole] || [];
+        const hasAccess = allowedRoutes.some(route => pathname.startsWith(route));
 
-        if (allowedRoutes) {
-            const hasAccess = allowedRoutes.some((route) => pathname.startsWith(route));
-
-            if (!hasAccess) {
-                if (pathname.startsWith("/api/")) {
-                    return NextResponse.json(
-                        { success: false, message: "Forbidden: Insufficient permissions" },
-                        { status: 403 }
-                    );
-                }
-                // Redirect to user's own dashboard
-                const dashboard = ROLE_DASHBOARD[userRole] || "/portal-dashboard";
-                return NextResponse.redirect(new URL(dashboard, request.url));
-            }
+        if (!hasAccess) {
+            return rejectRequest("Forbidden: Insufficient permissions", 403, ROLE_DASHBOARD[userRole] || "/portal-dashboard");
         }
 
-        // Attach user info to request headers for downstream use
-        const requestHeaders = new Headers(request.headers);
-        requestHeaders.set("x-user-id", payload.userId as string);
-        requestHeaders.set("x-user-email", payload.email as string);
-        requestHeaders.set("x-user-role", userRole);
-        if (payload.fullName) requestHeaders.set("x-user-fullname", payload.fullName as string);
+        const headers = new Headers(request.headers);
+        headers.set("x-user-id", payload.userId as string);
+        headers.set("x-user-email", payload.email as string);
+        headers.set("x-user-role", userRole);
+        if (payload.fullName) headers.set("x-user-fullname", payload.fullName as string);
 
-        return NextResponse.next({
-            request: { headers: requestHeaders },
-        });
+        return NextResponse.next({ request: { headers } });
+
     } catch {
-        // Token invalid or expired — clear cookies and redirect
-        if (pathname.startsWith("/api/")) {
-            return NextResponse.json(
-                { success: false, message: "Invalid or expired token" },
-                { status: 401 }
-            );
-        }
-
-        const response = NextResponse.redirect(new URL("/login", request.url));
-        response.cookies.set("auth_token", "", { maxAge: 0, path: "/" });
-        response.cookies.set("user_role", "", { maxAge: 0, path: "/" });
+        const response = isApiRequest 
+            ? NextResponse.json({ success: false, message: "Invalid or expired token" }, { status: 401 })
+            : NextResponse.redirect(new URL("/login", request.url));
+            
+        response.cookies.delete("auth_token");
+        response.cookies.delete("user_role");
         return response;
     }
 }
 
 export const config = {
-    matcher: [
-        "/((?!_next/static|_next/image|favicon.ico).*)",
-    ],
+    matcher: ["/((?!_next/static|_next/image|favicon.ico).*)"],
 };
+

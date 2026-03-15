@@ -64,6 +64,13 @@ interface RequestType {
   IsActive: boolean | null;
 }
 
+interface ServiceRequestStatus {
+  ServiceRequestStatusID: number;
+  ServiceRequestStatusName: string;
+  ServiceRequestStatusCssClass: string;
+  Sequence: number;
+}
+
 interface UserInfo {
   userId: string;
   email: string;
@@ -81,6 +88,11 @@ export default function UserRequestPortal() {
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [statuses, setStatuses] = useState<ServiceRequestStatus[]>([]);
+
+  const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [deptFilter, setDeptFilter] = useState("all");
 
   const [formData, setFormData] = useState({
     deptId: "",
@@ -90,6 +102,21 @@ export default function UserRequestPortal() {
     priority: "1",
   });
 
+
+  useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const res = await apiClient.get<ServiceRequestStatus[]>("/api/admin/status-master");
+        if (res.success && res.data) {
+          setStatuses(res.data);
+        }
+        
+      } catch (err) {
+        console.error("Failed to fetch statuses:", err);
+      }
+    };
+    fetchStatuses();
+  }, []);
   // ---- Fetch user info ----
   useEffect(() => {
     const fetchUser = async () => {
@@ -192,11 +219,8 @@ export default function UserRequestPortal() {
 
   const getStatusLabel = (statusId: string | null) => {
     if (!statusId) return "Pending";
-    const id = Number(statusId);
-    if (id === 1) return "Pending";
-    if (id === 2) return "Assigned";
-    if (id === 3) return "In Progress";
-    if (id === 4) return "Completed";
+    const status = statuses.find(s => s.ServiceRequestStatusID === Number(statusId))?.ServiceRequestStatusName;
+    if(status) return status;
     return "Pending";
   };
 
@@ -211,6 +235,28 @@ export default function UserRequestPortal() {
         return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pending</Badge>;
     }
   };
+
+  // ---- Filter Logic ----
+  const filteredRequests = requests.filter((req) => {
+    // 1. Search Query
+    const query = searchQuery.toLowerCase();
+    const matchesSearch =
+      !searchQuery ||
+      req.Title?.toLowerCase().includes(query) ||
+      String(req.ServiceRequestID).includes(query);
+
+    // 2. Status Filter
+    const matchesStatus =
+      statusFilter === "all" ||
+      getStatusLabel(req.StatusID) === statusFilter;
+
+    // 3. Department Filter
+    const matchesDept = 
+      deptFilter === "all" ||
+      req.ServiceRequestType?.ServiceDepartment?.DeptName === deptFilter;
+
+    return matchesSearch && matchesStatus && matchesDept;
+  });
 
   return (
     <div className="space-y-6">
@@ -235,7 +281,7 @@ export default function UserRequestPortal() {
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[550px]">
-            <DialogHeader>
+             <DialogHeader>
               <DialogTitle>Submit New Request</DialogTitle>
               <DialogDescription>Fill in the details to create a new support ticket.</DialogDescription>
             </DialogHeader>
@@ -353,21 +399,66 @@ export default function UserRequestPortal() {
         </Card>
       </div>
 
-      {/* Table */}
+      {/* Filters & Table */}
       <Card>
         <CardHeader className="border-b">
-          <CardTitle>Request History</CardTitle>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <CardTitle>Request History</CardTitle>
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="w-full sm:w-64">
+                <Input
+                  placeholder="Search title or ID..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
+              </div>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-36">
+                  <SelectValue placeholder="Status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statuses.map(s => (
+                    <SelectItem key={s.ServiceRequestStatusID} value={s.ServiceRequestStatusName}>
+                      {s.ServiceRequestStatusName}
+                    </SelectItem>
+                  ))}
+                  {/* Fallback if statuses haven't loaded yet */}
+                  {statuses.length === 0 && (
+                    <>
+                      <SelectItem value="Pending">Pending</SelectItem>
+                      <SelectItem value="In Progress">In Progress</SelectItem>
+                      <SelectItem value="Completed">Completed</SelectItem>
+                    </>
+                  )}
+                </SelectContent>
+              </Select>
+              <Select value={deptFilter} onValueChange={setDeptFilter}>
+                <SelectTrigger className="w-full sm:w-36">
+                  <SelectValue placeholder="Department" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Depts</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={d.ServiceDeptID} value={d.DeptName}>
+                      {d.DeptName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
-          {loading ? (
+           {loading ? (
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : requests.length === 0 ? (
+          ) : filteredRequests.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <FileText className="mb-2 h-10 w-10 opacity-30" />
-              <p className="font-medium">No requests yet</p>
-              <p className="text-sm">Click &quot;New Request&quot; to create one.</p>
+              <p className="font-medium">No requests match your filters</p>
+              <p className="text-sm">Try adjusting your search or filter criteria.</p>
             </div>
           ) : (
             <Table>
@@ -380,7 +471,7 @@ export default function UserRequestPortal() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {requests.map((req) => (
+                {filteredRequests.map((req) => (
                   <TableRow key={String(req.ServiceRequestID)} className="group">
                     <TableCell>
                       <Badge variant="outline" className="font-mono">

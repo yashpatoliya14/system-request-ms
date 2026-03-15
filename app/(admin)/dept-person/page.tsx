@@ -83,6 +83,7 @@ export default function DeptPersonMapping() {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Create dialog
   const [createOpen, setCreateOpen] = useState(false);
@@ -311,6 +312,17 @@ export default function DeptPersonMapping() {
     return name.split(" ").map((n) => n[0]).join("").toUpperCase().slice(0, 2);
   };
 
+  const filteredPersonnel = personnel.filter((p) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      p.Users?.FullName?.toLowerCase().includes(q) ||
+      p.Users?.Email?.toLowerCase().includes(q) ||
+      p.Users?.Role?.toLowerCase().includes(q) ||
+      p.ServiceDepartment?.DeptName?.toLowerCase().includes(q)
+    );
+  });
+
   const hodCount = personnel.filter((p) => p.Users?.Role?.toLowerCase() === "hod").length;
   const techCount = personnel.filter((p) => p.Users?.Role?.toLowerCase() === "technician").length;
 
@@ -331,36 +343,44 @@ export default function DeptPersonMapping() {
         </div>
 
         {/* Dialog */}
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/25">
-              <Plus className="h-4 w-4" />
-              Add Personnel
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>Add New Personnel</DialogTitle>
-              <DialogDescription>
-                Add an HOD or Technician and assign them to a department.
-              </DialogDescription>
-            </DialogHeader>
-            {renderFormFields(createForm, setCreateForm)}
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button
-                onClick={handleCreate}
-                disabled={creating || !createForm.FullName.trim() || !createForm.Email.trim() || !createForm.ServiceDeptID}
-              >
-                {creating ? (
-                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</>
-                ) : (
-                  "Add Personnel"
-                )}
+        <div className="flex flex-wrap items-center gap-3">
+          <Input 
+            placeholder="Search personnel..." 
+            className="w-full sm:w-64"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 shadow-lg shadow-primary/25">
+                <Plus className="h-4 w-4" />
+                Add Personnel
               </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Add New Personnel</DialogTitle>
+                <DialogDescription>
+                  Add an HOD or Technician and assign them to a department.
+                </DialogDescription>
+              </DialogHeader>
+              {renderFormFields(createForm, setCreateForm)}
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
+                <Button
+                  onClick={handleCreate}
+                  disabled={creating || !createForm.FullName.trim() || !createForm.Email.trim() || !createForm.ServiceDeptID}
+                >
+                  {creating ? (
+                    <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Adding...</>
+                  ) : (
+                    "Add Personnel"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -423,24 +443,26 @@ export default function DeptPersonMapping() {
       )}
 
       {/* Empty State */}
-      {!loading && personnel.length === 0 && (
+      {!loading && filteredPersonnel.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <UserCog className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="text-lg font-semibold">No personnel assigned yet</h3>
+            <h3 className="text-lg font-semibold">{searchQuery ? "No matching personnel" : "No personnel assigned yet"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Add HODs and Technicians to manage your departments.
+              {searchQuery ? "Try refining your search query." : "Add HODs and Technicians to manage your departments."}
             </p>
-            <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Personnel
-            </Button>
+            {!searchQuery && (
+              <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Personnel
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Table */}
-      {!loading && personnel.length > 0 && (
+      {!loading && filteredPersonnel.length > 0 && (
         <Card>
           <CardHeader className="border-b">
             <CardTitle className="flex items-center gap-2">
@@ -460,7 +482,7 @@ export default function DeptPersonMapping() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {personnel.map((item, index) => (
+                {filteredPersonnel.map((item, index) => (
                   <TableRow key={item.DeptPersonID} className="group">
                     <TableCell>
                       <div className="flex items-center gap-3">

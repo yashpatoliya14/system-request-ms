@@ -34,6 +34,7 @@ export default function ServiceTypeMaster() {
   const [serviceTypes, setServiceTypes] = useState<ServiceType[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [searchQuery, setSearchQuery] = useState("");
 
   // Create dialog state
   const [createOpen, setCreateOpen] = useState(false);
@@ -146,6 +147,10 @@ export default function ServiceTypeMaster() {
     setDeleteOpen(true);
   };
 
+  const filteredServiceTypes = serviceTypes.filter(st => 
+    !searchQuery || st.ServiceTypeName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -163,49 +168,57 @@ export default function ServiceTypeMaster() {
         </div>
 
         {/* Create Dialog */}
-        <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-          <DialogTrigger asChild>
-            <Button className="gap-2 shadow-lg shadow-primary/25">
-              <Plus className="h-4 w-4" />
-              Add Service Type
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[450px]">
-            <DialogHeader>
-              <DialogTitle>Add New Service Type</DialogTitle>
-              <DialogDescription>
-                Create a new service type for your organization.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="create-name">Service Type Name</Label>
-                <Input
-                  id="create-name"
-                  placeholder="e.g., Hardware Repair"
-                  value={createName}
-                  onChange={(e) => setCreateName(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleCreate()}
-                />
+        <div className="flex flex-wrap items-center gap-3">
+          <Input 
+            placeholder="Search service types..." 
+            className="w-full sm:w-64"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Dialog open={createOpen} onOpenChange={setCreateOpen}>
+            <DialogTrigger asChild>
+              <Button className="gap-2 shadow-lg shadow-primary/25">
+                <Plus className="h-4 w-4" />
+                Add Service Type
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[450px]">
+              <DialogHeader>
+                <DialogTitle>Add New Service Type</DialogTitle>
+                <DialogDescription>
+                  Create a new service type for your organization.
+                </DialogDescription>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="space-y-2">
+                  <Label htmlFor="create-name">Service Type Name</Label>
+                  <Input
+                    id="create-name"
+                    placeholder="e.g., Hardware Repair"
+                    value={createName}
+                    onChange={(e) => setCreateName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreate()}
+                  />
+                </div>
               </div>
-            </div>
-            <DialogFooter>
-              <Button variant="outline" onClick={() => setCreateOpen(false)}>
-                Cancel
-              </Button>
-              <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
-                {creating ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  "Create Service Type"
-                )}
-              </Button>
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setCreateOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleCreate} disabled={creating || !createName.trim()}>
+                  {creating ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    "Create Service Type"
+                  )}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Error Banner */}
@@ -242,24 +255,26 @@ export default function ServiceTypeMaster() {
       )}
 
       {/* Empty State */}
-      {!loading && serviceTypes.length === 0 && (
+      {!loading && filteredServiceTypes.length === 0 && (
         <Card className="border-dashed">
           <CardContent className="flex flex-col items-center justify-center py-16 text-center">
             <Settings2 className="mb-4 h-12 w-12 text-muted-foreground/50" />
-            <h3 className="text-lg font-semibold">No service types yet</h3>
+            <h3 className="text-lg font-semibold">{searchQuery ? "No matching service types" : "No service types yet"}</h3>
             <p className="text-sm text-muted-foreground mt-1">
-              Get started by adding your first service type.
+              {searchQuery ? "Try refining your search query." : "Get started by adding your first service type."}
             </p>
-            <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
-              <Plus className="h-4 w-4" />
-              Add Service Type
-            </Button>
+            {!searchQuery && (
+              <Button className="mt-4 gap-2" onClick={() => setCreateOpen(true)}>
+                <Plus className="h-4 w-4" />
+                Add Service Type
+              </Button>
+            )}
           </CardContent>
         </Card>
       )}
 
       {/* Table */}
-      {!loading && serviceTypes.length > 0 && (
+      {!loading && filteredServiceTypes.length > 0 && (
         <Card>
           <CardContent className="p-0">
             <Table>
@@ -271,7 +286,7 @@ export default function ServiceTypeMaster() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {serviceTypes.map((item, index) => (
+                {filteredServiceTypes.map((item, index) => (
                   <TableRow key={item.ServiceTypeID} className="group">
                     <TableCell className="text-muted-foreground">{index + 1}</TableCell>
                     <TableCell className="font-medium">{item.ServiceTypeName}</TableCell>

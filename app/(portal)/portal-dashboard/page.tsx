@@ -69,6 +69,7 @@ interface ServiceRequestStatus {
   ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
   IsAllowedForTechnician: boolean;
+  Sequence: number;
 }
 
 interface Department {
@@ -99,10 +100,14 @@ export default function PortalDashboard() {
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
   const [statuses, setStatuses] = useState<ServiceRequestStatus[]>([]);
   const [user, setUser] = useState<UserInfo | null>(null);
+
+
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState("ALL");
+  const [deptFilter, setDeptFilter] = useState("ALL");
 
   const [formData, setFormData] = useState({
     deptId: "",
@@ -166,6 +171,18 @@ export default function PortalDashboard() {
       setLoading(false);
     }
   };
+ useEffect(() => {
+    const fetchStatuses = async () => {
+      try {
+        const res = await apiClient.get<ServiceRequestStatus[]>("/api/admin/status-master");
+        if (res.success) setStatuses(res.data || []);
+        console.log(res.data);
+      } catch (err) {
+        console.error("Failed to fetch statuses:", err);
+      }
+    };
+    fetchStatuses();
+  }, []);
 
   useEffect(() => {
     if (user) fetchRequests();
@@ -215,19 +232,26 @@ export default function PortalDashboard() {
   );
 
   const filteredRequests = requests.filter((r) => {
-    if (!searchQuery) return true;
     const q = searchQuery.toLowerCase();
-    return (
+    const matchSearch = !searchQuery || (
       r.Title?.toLowerCase().includes(q) ||
       String(r.ServiceRequestID).includes(q)
     );
+
+    const matchStatus = statusFilter === "ALL" || String(r.StatusID) === statusFilter;
+
+    const reqDeptName = r.ServiceRequestType?.ServiceDepartment?.DeptName;
+    const matchDept = deptFilter === "ALL" || reqDeptName === deptFilter;
+
+    return matchSearch && matchStatus && matchDept;
   });
 
   const getStatusLabel = (statusId: string | null) => {
     if (!statusId) return "Pending";
-    const id = Number(statusId);
-    const status = statuses.find(s => s.ServiceRequestStatusID === id);
-    if (status) return status.ServiceRequestStatusName;
+
+    const status = statuses.find(s => s.ServiceRequestStatusID === Number(statusId))?.ServiceRequestStatusName;
+    
+    if(status) return status;
 
     return "Pending";
   };
@@ -401,19 +425,44 @@ export default function PortalDashboard() {
         <CardHeader className="border-b">
           <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
             <CardTitle>Recent Requests</CardTitle>
-            <div className="flex gap-2">
-              <div className="relative">
+            <div className="flex flex-wrap items-center gap-3">
+              <div className="relative flex-1 sm:w-64 sm:flex-none">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
                   placeholder="Search by title or ID..."
-                  className="w-64 pl-9"
+                  className="pl-9 w-full"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Button variant="outline" size="icon">
-                <Filter className="h-4 w-4" />
-              </Button>
+              
+              <Select value={deptFilter} onValueChange={setDeptFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Departments" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Departments</SelectItem>
+                  {departments.map((d) => (
+                    <SelectItem key={String(d.ServiceDeptID)} value={d.DeptName}>
+                      {d.DeptName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-[160px]">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="ALL">All Statuses</SelectItem>
+                  {statuses.map((s) => (
+                    <SelectItem key={String(s.ServiceRequestStatusID)} value={String(s.ServiceRequestStatusID)}>
+                      {s.ServiceRequestStatusName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>

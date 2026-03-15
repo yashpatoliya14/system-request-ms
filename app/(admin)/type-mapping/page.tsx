@@ -86,6 +86,7 @@ export default function AutoAssignmentMaster() {
   const [isUpdating, setIsUpdating] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState<string | null>(null);
   const [loadingInitial, setLoadingInitial] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editItem, setEditItem] = useState<IPersonMapping | null>(null);
@@ -183,6 +184,15 @@ export default function AutoAssignmentMaster() {
     }
   };
 
+  const filteredMappings = personMappingList.filter((item) => {
+    if (!searchQuery) return true;
+    const q = searchQuery.toLowerCase();
+    return (
+      item.ServiceRequestType.RequestTypeName.toLowerCase().includes(q) ||
+      item.ServiceDeptPerson.Users.FullName.toLowerCase().includes(q) ||
+      item.ServiceDeptPerson.ServiceDepartment.DeptName.toLowerCase().includes(q)
+    );
+  });
 
   return (
     <div className="space-y-6">
@@ -275,7 +285,12 @@ export default function AutoAssignmentMaster() {
         <CardContent className="flex items-center gap-4 p-4">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input placeholder="Search by request type or staff..." className="pl-10" />
+            <Input 
+              placeholder="Search by request type or staff..." 
+              className="pl-10" 
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
           </div>
         </CardContent>
       </Card>
@@ -316,14 +331,14 @@ export default function AutoAssignmentMaster() {
                     </TableCell>
                   </TableRow>
                 ))
-              ) : personMappingList.length === 0 ? (
+              ) : filteredMappings.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="h-24 text-center text-muted-foreground">
-                    No mappings found.
+                    {searchQuery ? "No matching mappings found." : "No mappings found."}
                   </TableCell>
                 </TableRow>
               ) : (
-                personMappingList.map((item) => (
+                filteredMappings.map((item) => (
                   <TableRow key={item.ServiceRequestTypeID} className="group">
                     <TableCell>
                       <div className="flex items-center gap-3">

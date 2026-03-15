@@ -64,6 +64,7 @@ export default function StatusMaster() {
   const [editingStatus, setEditingStatus] = useState<StatusItem | null>(null);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [formData, setFormData] = useState(DEFAULT_FORM);
+  const [searchQuery, setSearchQuery] = useState("");
 
   // ---- Fetch all statuses ----
   const fetchStatuses = async () => {
@@ -168,6 +169,10 @@ export default function StatusMaster() {
     return match?.badge || "bg-slate-100 text-slate-700";
   };
 
+  const filteredStatuses = statuses.filter((s) => 
+    !searchQuery || s.ServiceRequestStatusName.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   // ---- Reusable form for create & edit ----
   const renderForm = (onSubmit: () => void, submitLabel: string) => (
     <div className="grid gap-4 py-4">
@@ -255,26 +260,34 @@ export default function StatusMaster() {
         </div>
 
         {/* Create Dialog */}
-        <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
-          <DialogTrigger asChild>
-            <Button
-              className="gap-2 shadow-lg shadow-primary/25"
-              onClick={() => setFormData(DEFAULT_FORM)}
-            >
-              <Plus className="h-4 w-4" />
-              Add Status
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[520px]">
-            <DialogHeader>
-              <DialogTitle>Add New Status</DialogTitle>
-              <DialogDescription>
-                Create a new status for the request workflow.
-              </DialogDescription>
-            </DialogHeader>
-            {renderForm(handleCreate, "Create Status")}
-          </DialogContent>
-        </Dialog>
+        <div className="flex flex-wrap items-center gap-3">
+          <Input 
+            placeholder="Search statuses..." 
+            className="w-full sm:w-64"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+            <DialogTrigger asChild>
+              <Button
+                className="gap-2 shadow-lg shadow-primary/25"
+                onClick={() => setFormData(DEFAULT_FORM)}
+              >
+                <Plus className="h-4 w-4" />
+                Add Status
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[520px]">
+              <DialogHeader>
+                <DialogTitle>Add New Status</DialogTitle>
+                <DialogDescription>
+                  Create a new status for the request workflow.
+                </DialogDescription>
+              </DialogHeader>
+              {renderForm(handleCreate, "Create Status")}
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       {/* Stats */}
@@ -312,11 +325,11 @@ export default function StatusMaster() {
             <div className="flex items-center justify-center py-16">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
-          ) : statuses.length === 0 ? (
+          ) : filteredStatuses.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
               <CheckSquare className="mb-2 h-10 w-10 opacity-30" />
-              <p className="font-medium">No statuses defined</p>
-              <p className="text-sm">Click &quot;Add Status&quot; to create the first workflow stage.</p>
+              <p className="font-medium">{searchQuery ? "No matching statuses" : "No statuses defined"}</p>
+              <p className="text-sm">{searchQuery ? "Try refining your search query." : "Click \"Add Status\" to create the first workflow stage."}</p>
             </div>
           ) : (
             <Table>
@@ -331,7 +344,7 @@ export default function StatusMaster() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {statuses.map((s) => (
+                {filteredStatuses.map((s) => (
                   <TableRow key={s.ServiceRequestStatusID} className="group">
                     <TableCell className="font-mono text-muted-foreground">
                       {s.Sequence ?? s.ServiceRequestStatusID}
