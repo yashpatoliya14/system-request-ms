@@ -12,9 +12,12 @@ export default function PortalLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     const role = getCookie("user_role")?.toLowerCase();
-    // All authenticated roles can access the portal
-    if (role === "admin" || role === "hod" || role === "user" || role === "technician") {
+    if (role === "user" || role === "technician") {
       setAuthorized(true);
+      // Technicians should land on their workspace, not the portal dashboard
+      if (role === "technician") {
+        router.replace("/technician");
+      }
     } else {
       router.replace("/login");
     }

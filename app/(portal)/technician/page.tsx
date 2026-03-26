@@ -51,6 +51,9 @@ interface ServiceRequestStatus {
   ServiceRequestStatusName: string;
   IsAllowedForTechnician: boolean;
   ServiceRequestStatusCssClass: string;
+  IsTerminal?: boolean | null;
+  IsDefault?: boolean | null;
+  IsAssigned?: boolean | null;
 }
 
 export default function TechnicianDashboard() {
@@ -137,16 +140,11 @@ export default function TechnicianDashboard() {
 
   // ---- Helpers ----
   const getStatusLabel = (statusId: string | null) => {
-    if (!statusId) return "Pending";
+    if (!statusId) return "Unknown";
     const id = Number(statusId);
     const status = statuses.find(s => s.ServiceRequestStatusID === id);
     if (status) return status.ServiceRequestStatusName;
-
-    if (id === 1) return "Pending";
-    if (id === 2) return "Assigned";
-    if (id === 3) return "In Progress";
-    if (id === 4) return "Completed";
-    return "Pending";
+    return "Unknown";
   };
 
   const getStatusBadge = (statusId: string | null) => {
@@ -169,7 +167,14 @@ export default function TechnicianDashboard() {
     return "Low";
   };
 
-  // ---- Stats ----
+  // ---- Stats (use flags) ----
+  const terminalCount = requests.filter((r) => {
+    const id = Number(r.StatusID);
+    const s = statuses.find(st => st.ServiceRequestStatusID === id);
+    return s?.IsTerminal === true;
+  }).length;
+  const activeCount = requests.length - terminalCount;
+
   const stats = [
     {
       label: "Assigned",
@@ -180,8 +185,8 @@ export default function TechnicianDashboard() {
       border: "border-blue-200",
     },
     {
-      label: "In Progress",
-      count: requests.filter((r) => getStatusLabel(r.StatusID) === "In Progress").length,
+      label: "Active",
+      count: activeCount,
       icon: Loader2,
       color: "text-amber-600",
       bg: "bg-amber-50",
@@ -189,7 +194,7 @@ export default function TechnicianDashboard() {
     },
     {
       label: "Completed",
-      count: requests.filter((r) => getStatusLabel(r.StatusID) === "Completed").length,
+      count: terminalCount,
       icon: CheckCircle2,
       color: "text-emerald-600",
       bg: "bg-emerald-50",
@@ -321,7 +326,7 @@ export default function TechnicianDashboard() {
                       <div className="flex gap-3 lg:min-w-[200px] lg:flex-col">
                         <Select
                           disabled={isUpdating}
-                          value={String(task.StatusID || "")}
+                          value={technicianStatuses.some(s => String(s.ServiceRequestStatusID) === String(task.StatusID)) ? String(task.StatusID) : undefined}
                           onValueChange={(val) => handleUpdateStatus(String(task.ServiceRequestID), val)}
                         >
                           <SelectTrigger className="w-full">

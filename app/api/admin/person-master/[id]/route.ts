@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/prisma";
+import { PrismaClientKnownRequestError } from "@prisma/client/runtime/library";
 import { NextRequest, NextResponse } from "next/server";
 //types
 
@@ -52,7 +53,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
     try {
         const { id } = await params;
         const body = await req.json();
-        const { ServiceDeptID, Role,FullName,Email,Phone } = body;
+        const { ServiceDeptID, Role } = body;
         
         
         //update the Person Master Data
@@ -71,9 +72,6 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             await prisma.users.update({
                 data: {
                     Role: Role,
-                    FullName: FullName,
-                    Email: Email,
-                    Phone: Phone,
                 },
                 where: {
                     UserID: BigInt(user.UserID),
@@ -106,7 +104,7 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
 
             const userRole = await prisma.users.update({
                 data:{
-                    Role: "User",
+                    Role: "user",
                 },
                 where: {
                     UserID: BigInt(user.UserID),
@@ -121,7 +119,11 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
             return NextResponse.json({ success: false, message: "Delete Person Master Failed", data: [] }, { status: 400 });
         }
     } catch (e) {
-
+        if(e instanceof PrismaClientKnownRequestError){
+            if(e.code === "P2003"){
+                return NextResponse.json({ success: false, message: "Personnel is assigned to some request", data: [] }, { status: 409 });
+            }
+        }
         console.log(`Error in deleting person master ${e}`);
         return NextResponse.json({ success: false, message: "Delete Person Master Failed", data: [] }, { status: 500 });
     }

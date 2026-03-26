@@ -61,6 +61,8 @@ interface ServiceRequest {
   ServiceRequestStatus?: {
     ServiceRequestStatusName: string;
     ServiceRequestStatusCssClass: string;
+    IsTerminal?: boolean | null;
+    IsDefault?: boolean | null;
   } | null;
 }
 
@@ -69,6 +71,8 @@ interface ServiceRequestStatus {
   ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
   IsAllowedForTechnician: boolean;
+  IsDefault?: boolean | null;
+  IsTerminal?: boolean | null;
   Sequence: number;
 }
 
@@ -108,13 +112,13 @@ export default function PortalDashboard() {
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [deptFilter, setDeptFilter] = useState("ALL");
-
+  
   const [formData, setFormData] = useState({
     deptId: "",
     typeId: "",
     subject: "",
     description: "",
-    priority: "1",
+    priority: "Low",
   });
 
   // ---- Fetch user info ----
@@ -264,15 +268,15 @@ export default function PortalDashboard() {
     );
   };
 
-  const pendingCount = requests.filter((r) => getStatusLabel(r.StatusID) === "Pending").length;
-  const activeCount = requests.filter((r) => getStatusLabel(r.StatusID) === "In Progress").length;
-  const closedCount = requests.filter((r) => getStatusLabel(r.StatusID) === "Completed").length;
+  const defaultCount = requests.filter((r) => r.ServiceRequestStatus?.IsDefault === true || (!r.ServiceRequestStatus && !r.StatusID)).length;
+  const terminalCount = requests.filter((r) => r.ServiceRequestStatus?.IsTerminal === true).length;
+  const activeCount = requests.length - defaultCount - terminalCount;
 
   const stats = [
     { label: "Total", count: requests.length, variant: "default" as const },
-    { label: "Pending", count: pendingCount, variant: "warning" as const },
+    { label: "Pending", count: defaultCount, variant: "warning" as const },
     { label: "Active", count: activeCount, variant: "info" as const },
-    { label: "Closed", count: closedCount, variant: "success" as const },
+    { label: "Closed", count: terminalCount, variant: "success" as const },
   ];
 
   return (
@@ -373,10 +377,9 @@ export default function PortalDashboard() {
                     <SelectValue placeholder="Select priority..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Low</SelectItem>
-                    <SelectItem value="2">Medium</SelectItem>
-                    <SelectItem value="3">High</SelectItem>
-                    <SelectItem value="4">Urgent</SelectItem>
+                    <SelectItem value="Low">Low</SelectItem>
+                    <SelectItem value="Medium">Medium</SelectItem>
+                    <SelectItem value="High">High</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -509,7 +512,7 @@ export default function PortalDashboard() {
                     <TableCell>{getStatusBadge(req)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex items-center justify-end gap-2">
-                        {getStatusLabel(req.StatusID) === "Pending" && (
+                        {(req.ServiceRequestStatus?.IsDefault === true || (!req.ServiceRequestStatus && !req.StatusID)) && (
                           <Button
                             variant="ghost"
                             size="icon"

@@ -49,6 +49,12 @@ interface ServiceRequest {
     RequestTypeName: string;
     ServiceDepartment?: { DeptName: string };
   } | null;
+  ServiceRequestStatus?: {
+    ServiceRequestStatusName: string;
+    ServiceRequestStatusCssClass: string;
+    IsTerminal?: boolean | null;
+    IsDefault?: boolean | null;
+  } | null;
 }
 
 interface Department {
@@ -68,6 +74,8 @@ interface ServiceRequestStatus {
   ServiceRequestStatusID: number;
   ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
+  IsDefault?: boolean | null;
+  IsTerminal?: boolean | null;
   Sequence: number;
 }
 
@@ -224,16 +232,10 @@ export default function UserRequestPortal() {
     return "Pending";
   };
 
-  const getStatusBadge = (statusId: string | null) => {
-    const label = getStatusLabel(statusId);
-    switch (label) {
-      case "Completed":
-        return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Completed</Badge>;
-      case "In Progress":
-        return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-100">In Progress</Badge>;
-      default:
-        return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Pending</Badge>;
-    }
+  const getStatusBadge = (req: ServiceRequest) => {
+    const cssClass = req.ServiceRequestStatus?.ServiceRequestStatusCssClass || "bg-slate-100 text-slate-700 hover:bg-slate-100";
+    const label = req.ServiceRequestStatus?.ServiceRequestStatusName || getStatusLabel(req.StatusID);
+    return <Badge className={cssClass}>{label}</Badge>;
   };
 
   // ---- Filter Logic ----
@@ -384,7 +386,7 @@ export default function UserRequestPortal() {
         <Card className="border-amber-200 bg-amber-50/50">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="text-2xl font-bold text-amber-600">
-              {loading ? "—" : requests.filter((r) => getStatusLabel(r.StatusID) === "Pending").length}
+              {loading ? "—" : requests.filter((r) => r.ServiceRequestStatus?.IsDefault === true || (!r.ServiceRequestStatus && !r.StatusID)).length}
             </div>
             <p className="text-sm text-muted-foreground">Pending</p>
           </CardContent>
@@ -392,7 +394,7 @@ export default function UserRequestPortal() {
         <Card className="border-emerald-200 bg-emerald-50/50">
           <CardContent className="flex items-center gap-4 p-6">
             <div className="text-2xl font-bold text-emerald-600">
-              {loading ? "—" : requests.filter((r) => getStatusLabel(r.StatusID) === "Completed").length}
+              {loading ? "—" : requests.filter((r) => r.ServiceRequestStatus?.IsTerminal === true).length}
             </div>
             <p className="text-sm text-muted-foreground">Completed</p>
           </CardContent>
@@ -423,14 +425,6 @@ export default function UserRequestPortal() {
                       {s.ServiceRequestStatusName}
                     </SelectItem>
                   ))}
-                  {/* Fallback if statuses haven't loaded yet */}
-                  {statuses.length === 0 && (
-                    <>
-                      <SelectItem value="Pending">Pending</SelectItem>
-                      <SelectItem value="In Progress">In Progress</SelectItem>
-                      <SelectItem value="Completed">Completed</SelectItem>
-                    </>
-                  )}
                 </SelectContent>
               </Select>
               <Select value={deptFilter} onValueChange={setDeptFilter}>
@@ -486,10 +480,10 @@ export default function UserRequestPortal() {
                         </p>
                       </div>
                     </TableCell>
-                    <TableCell>{getStatusBadge(req.StatusID)}</TableCell>
+                    <TableCell>{getStatusBadge(req)}</TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        {getStatusLabel(req.StatusID) === "Pending" && (
+                        {(req.ServiceRequestStatus?.IsDefault === true || (!req.ServiceRequestStatus && !req.StatusID)) && (
                           <Button
                             variant="ghost"
                             size="icon"

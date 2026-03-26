@@ -34,6 +34,9 @@ interface StatusItem {
   Description: string | null;
   ServiceRequestStatusCssClass: string | null;
   IsAllowedForTechnician: boolean | null;
+  IsDefault: boolean | null;
+  IsAssigned: boolean | null;
+  IsTerminal: boolean | null;
   Created: string;
 }
 
@@ -54,6 +57,9 @@ const DEFAULT_FORM = {
   Description: "",
   ServiceRequestStatusCssClass: "bg-blue-500",
   IsAllowedForTechnician: false,
+  IsDefault: false,
+  IsAssigned: false,
+  IsTerminal: false,
 };
 
 export default function StatusMaster() {
@@ -118,6 +124,9 @@ export default function StatusMaster() {
       Description: status.Description || "",
       ServiceRequestStatusCssClass: status.ServiceRequestStatusCssClass || "bg-blue-500",
       IsAllowedForTechnician: status.IsAllowedForTechnician ?? false,
+      IsDefault: status.IsDefault ?? false,
+      IsAssigned: status.IsAssigned ?? false,
+      IsTerminal: status.IsTerminal ?? false,
     });
     setIsEditOpen(true);
   };
@@ -233,6 +242,42 @@ export default function StatusMaster() {
           checked={formData.IsAllowedForTechnician}
           onCheckedChange={(val) =>
             setFormData({ ...formData, IsAllowedForTechnician: val })
+          }
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-lg border p-3 border-blue-200 bg-blue-50/30">
+        <div>
+          <p className="text-sm font-medium">Default Status</p>
+          <p className="text-xs text-muted-foreground">Auto-assigned when a new request is created</p>
+        </div>
+        <Switch
+          checked={formData.IsDefault}
+          onCheckedChange={(val) =>
+            setFormData({ ...formData, IsDefault: val })
+          }
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-lg border p-3 border-emerald-200 bg-emerald-50/30">
+        <div>
+          <p className="text-sm font-medium">Assigned Status</p>
+          <p className="text-xs text-muted-foreground">Auto-set when technician is assigned to a request</p>
+        </div>
+        <Switch
+          checked={formData.IsAssigned}
+          onCheckedChange={(val) =>
+            setFormData({ ...formData, IsAssigned: val })
+          }
+        />
+      </div>
+      <div className="flex items-center justify-between rounded-lg border p-3 border-rose-200 bg-rose-50/30">
+        <div>
+          <p className="text-sm font-medium">Terminal Status</p>
+          <p className="text-xs text-muted-foreground">Marks the request as completed / resolved</p>
+        </div>
+        <Switch
+          checked={formData.IsTerminal}
+          onCheckedChange={(val) =>
+            setFormData({ ...formData, IsTerminal: val })
           }
         />
       </div>

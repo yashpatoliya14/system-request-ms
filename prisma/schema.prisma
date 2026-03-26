@@ -42,7 +42,7 @@ model ServiceRequest {
   StatusID             Int?
   Title                String?
   Description          String?
-  Priority             BigInt?
+  Priority             Priority?
   ServiceDeptPerson    ServiceDeptPerson?    @relation(fields: [AssignedToID], references: [DeptPersonID], onDelete: NoAction, onUpdate: NoAction)
   Users                Users?                @relation(fields: [RequestorID], references: [UserID], onDelete: NoAction, onUpdate: NoAction, map: "ServiceRequest_RequesterID_fkey")
   ServiceRequestType   ServiceRequestType?   @relation(fields: [ServiceRequestTypeID], references: [ServiceRequestTypeID], onDelete: NoAction, onUpdate: NoAction)
@@ -72,6 +72,9 @@ model ServiceRequestStatus {
   Modified                     DateTime         @default(dbgenerated("CURRENT_DATE")) @db.Date
   ServiceRequestStatusCssClass String?
   IsAllowedForTechnician       Boolean?
+  IsDefault                    Boolean?         @default(false)
+  IsTerminal                   Boolean?         @default(false)
+  IsAssigned                   Boolean?         @default(false)
   ServiceRequest               ServiceRequest[]
 }
 
@@ -82,8 +85,8 @@ model ServiceRequestType {
   ServiceTypeID                BigInt?
   ServiceDeptID                BigInt?
   RequestTypeName              String?
-  DefaultPriority              Decimal?                       @db.Decimal
   IsActive                     Boolean?
+  DefaultPriority              Priority?                      @default(LOW)
   ServiceRequest               ServiceRequest[]
   ServiceDepartment            ServiceDepartment?             @relation(fields: [ServiceDeptID], references: [ServiceDeptID], onDelete: NoAction, onUpdate: NoAction)
   ServiceType                  ServiceType?                   @relation(fields: [ServiceTypeID], references: [ServiceTypeID], onDelete: NoAction, onUpdate: NoAction)
@@ -142,4 +145,10 @@ model TempUser {
   IsVerified   Boolean?
   Password     String?
   Phone        Decimal?  @db.Decimal
+}
+
+enum Priority {
+  HIGH
+  LOW
+  MEDIUM
 }

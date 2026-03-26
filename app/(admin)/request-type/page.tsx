@@ -34,6 +34,7 @@ import {
 } from "@/components/ui/table";
 import { apiClient } from "@/lib/apiClient";
 import { Switch } from "@/components/ui/switch";
+import { priorityLabels } from "@/lib/constant";
 
 // Types
 interface Department {
@@ -49,7 +50,7 @@ interface ServiceType {
 interface RequestType {
   ServiceRequestTypeID: string;
   RequestTypeName: string;
-  DefaultPriority: number | null;
+  DefaultPriority: string | null;
   IsActive: boolean | null;
   ServiceTypeID: string;
   ServiceDeptID: string;
@@ -69,17 +70,11 @@ const emptyForm: FormData = {
   RequestTypeName: "",
   ServiceTypeID: "",
   ServiceDeptID: "",
-  DefaultPriority: "3",
+  DefaultPriority: "MEDIUM",
   IsActive: true,
 };
 
-const priorityLabels: Record<string, string> = {
-  "1": "Critical",
-  "2": "High",
-  "3": "Medium",
-  "4": "Low",
-  "5": "Very Low",
-};
+
 
 export default function RequestTypeMaster() {
   const [requestTypes, setRequestTypes] = useState<RequestType[]>([]);
@@ -138,7 +133,7 @@ export default function RequestTypeMaster() {
         ServiceRequestTypeName: createForm.RequestTypeName.trim(),
         ServiceTypeID: createForm.ServiceTypeID,
         ServiceDeptID: createForm.ServiceDeptID,
-        DefaultPriority: parseInt(createForm.DefaultPriority),
+        DefaultPriority: createForm.DefaultPriority,
         IsActive: createForm.IsActive,
       });
       if (res.success) {
@@ -163,7 +158,7 @@ export default function RequestTypeMaster() {
         RequestTypeName: editForm.RequestTypeName.trim(),
         ServiceTypeID: editForm.ServiceTypeID,
         ServiceDeptID: editForm.ServiceDeptID,
-        DefaultPriority: parseInt(editForm.DefaultPriority),
+        DefaultPriority: editForm.DefaultPriority,
         IsActive: editForm.IsActive,
       });
       if (res.success) {
@@ -203,7 +198,7 @@ export default function RequestTypeMaster() {
       RequestTypeName: item.RequestTypeName ?? "",
       ServiceTypeID: item.ServiceTypeID?.toString() ?? "",
       ServiceDeptID: item.ServiceDeptID?.toString() ?? "",
-      DefaultPriority: (item.DefaultPriority ?? 3).toString(),
+      DefaultPriority: item.DefaultPriority?.toUpperCase() ?? "MEDIUM",
       IsActive: item.IsActive ?? true,
     });
     setEditOpen(true);
@@ -214,14 +209,7 @@ export default function RequestTypeMaster() {
     setDeleteOpen(true);
   };
 
-  const getPriorityBadge = (priority: number | null) => {
-    const p = priority ?? 3;
-    if (p <= 1) return <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100">Critical</Badge>;
-    if (p === 2) return <Badge className="bg-orange-100 text-orange-700 hover:bg-orange-100">High</Badge>;
-    if (p === 3) return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-100">Medium</Badge>;
-    if (p === 4) return <Badge className="bg-sky-100 text-sky-700 hover:bg-sky-100">Low</Badge>;
-    return <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Very Low</Badge>;
-  };
+
 
   // Shared form fields component
   const renderFormFields = (form: FormData, setForm: (f: FormData) => void) => (
@@ -274,9 +262,9 @@ export default function RequestTypeMaster() {
               <SelectValue placeholder="Select..." />
             </SelectTrigger>
             <SelectContent>
-              {Object.entries(priorityLabels).map(([val, label]) => (
-                <SelectItem key={val} value={val}>
-                  {label}
+              {priorityLabels.map((item) => (
+                <SelectItem key={item.label} value={item.label.toUpperCase()}>
+                  {item.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -450,7 +438,16 @@ export default function RequestTypeMaster() {
                         {item.ServiceType?.ServiceTypeName ?? "—"}
                       </Badge>
                     </TableCell>
-                    <TableCell>{getPriorityBadge(item.DefaultPriority)}</TableCell>
+                    {(() => {
+                      const p = priorityLabels.find((p) => p.label.toUpperCase() === item.DefaultPriority?.toUpperCase());
+                      return (
+                        <TableCell>
+                          <Badge className={`${p?.bgColor} ${p?.textColor} hover:${p?.bgColor}`}>
+                            {p?.label ?? "—"}
+                          </Badge>
+                        </TableCell>
+                      );
+                    })()}
                     <TableCell>
                       {item.IsActive ? (
                         <Badge className="bg-emerald-100 text-emerald-700 hover:bg-emerald-100">Active</Badge>

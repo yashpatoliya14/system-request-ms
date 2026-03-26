@@ -18,6 +18,9 @@ export async function POST(req: NextRequest) {
             Description,
             ServiceRequestStatusCssClass,
             IsAllowedForTechnician,
+            IsDefault,
+            IsAssigned,
+            IsTerminal,
         } = body;
 
         // Get next available ID
@@ -34,6 +37,9 @@ export async function POST(req: NextRequest) {
                 Description: Description || null,
                 ServiceRequestStatusCssClass: ServiceRequestStatusCssClass || null,
                 IsAllowedForTechnician: IsAllowedForTechnician ?? false,
+                IsDefault: IsDefault ?? false,
+                IsAssigned: IsAssigned ?? false,
+                IsTerminal: IsTerminal ?? false,
             },
         });
 

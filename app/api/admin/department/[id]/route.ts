@@ -73,9 +73,17 @@ export async function DELETE(req: NextRequest, { params }: { params: Promise<{ i
         } else {
             return NextResponse.json({ success: false, message: "Delete Department Failed", data: [] }, { status: 400 });
         }
-    } catch (e) {
-
+    } catch (e: any) {
         console.log(`Error in deleting department ${e}`);
+
+        // Foreign key constraint violation — department is in use
+        if (e?.code === "P2003") {
+            return NextResponse.json(
+                { success: false, message: "Cannot delete this department because it is currently associated with technicians or request types. Please reassign or remove them first.", data: [] },
+                { status: 409 }
+            );
+        }
+
         return NextResponse.json({ success: false, message: "Delete Department Failed", data: [] }, { status: 500 });
     }
 }

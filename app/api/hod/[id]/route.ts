@@ -28,11 +28,29 @@ export async function PATCH(req: NextRequest,{params}: { params: Promise<{ id: s
         const body = await req.json();
         const { AssignedToID } = body;
 
+        // Check if request is already in a terminal (completed) status
+        const existingRequest = await prisma.serviceRequest.findUnique({
+            where: { ServiceRequestID: BigInt(id) },
+            include: { ServiceRequestStatus: true }
+        });
+
+        if (existingRequest?.ServiceRequestStatus?.IsTerminal) {
+            return NextResponse.json(
+                { success: false, message: "Cannot reassign — this request is already completed.", data: [] },
+                { status: 409 }
+            );
+        }
+
+        // Dynamically find the "assigned" status
+        const assignedStatus = await prisma.serviceRequestStatus.findFirst({
+            where: { IsAssigned: true }
+        });
+
         //update a assignment
         const assignment = await prisma.serviceRequest.update({
             data:{
                 AssignedToID:BigInt(AssignedToID),
-                StatusID:3,
+                StatusID: assignedStatus?.ServiceRequestStatusID ?? 3,
             },
             where:{
                 ServiceRequestID:BigInt(id),

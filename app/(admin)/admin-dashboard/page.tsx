@@ -1,163 +1,225 @@
 "use client";
 
-import React from "react";
-import { Users, Building, Activity, ShieldCheck, ArrowUpRight, TrendingUp, Clock, CheckCircle2 } from "lucide-react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import React, { useState, useEffect, useCallback } from "react";
+import {
+  Users,
+  Building,
+  Layers,
+  ShieldCheck,
+  Wrench,
+  Settings2,
+  UserCog,
+  FileText,
+  Loader2,
+  AlertCircle,
+} from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Skeleton } from "@/components/ui/skeleton";
+import { apiClient } from "@/lib/apiClient";
+
+interface RequestByStatus {
+  statusName: string;
+  count: number;
+  cssClass: string;
+}
+
+interface DashboardStats {
+  totalUsers: number;
+  totalDepartments: number;
+  totalServiceTypes: number;
+  totalRequestTypes: number;
+  totalPersonnel: number;
+  totalRequests: number;
+  hodCount: number;
+  technicianCount: number;
+  activeRequestTypes: number;
+  requestsByStatus: RequestByStatus[];
+}
 
 export default function AdminDashboard() {
-  const systemStats = [
+  const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const fetchStats = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError("");
+      const res = await apiClient.get<DashboardStats>("/api/admin/dashboard");
+      if (res.success) {
+        setStats(res.data ?? null);
+      }
+    } catch (err) {
+      console.error(err);
+      setError("Failed to load dashboard data");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
+
+  const statCards = [
     {
       label: "Total Users",
-      value: "1,240",
-      change: "+12%",
+      value: stats?.totalUsers ?? 0,
       icon: Users,
-      gradient: "from-violet-500 to-purple-600",
-      bgLight: "bg-violet-50"
+      iconBg: "bg-violet-100",
+      iconColor: "text-violet-600",
     },
     {
       label: "Departments",
-      value: "18",
-      change: "+2",
+      value: stats?.totalDepartments ?? 0,
       icon: Building,
-      gradient: "from-blue-500 to-cyan-500",
-      bgLight: "bg-blue-50"
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
     },
     {
-      label: "Active Services",
-      value: "42",
-      change: "+8%",
-      icon: Activity,
-      gradient: "from-emerald-500 to-teal-500",
-      bgLight: "bg-emerald-50"
+      label: "Service Types",
+      value: stats?.totalServiceTypes ?? 0,
+      icon: Layers,
+      iconBg: "bg-emerald-100",
+      iconColor: "text-emerald-600",
     },
     {
-      label: "System Health",
-      value: "99.9%",
-      change: "Excellent",
-      icon: ShieldCheck,
-      gradient: "from-amber-500 to-orange-500",
-      bgLight: "bg-amber-50"
+      label: "Request Types",
+      value: stats?.totalRequestTypes ?? 0,
+      subtitle: `${stats?.activeRequestTypes ?? 0} active`,
+      icon: Settings2,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
     },
   ];
 
-  const recentActivity = [
-    { action: "New department created", dept: "Finance", time: "2 minutes ago", status: "completed" },
-    { action: "User role updated", dept: "IT Support", time: "15 minutes ago", status: "completed" },
-    { action: "Service type modified", dept: "Maintenance", time: "1 hour ago", status: "pending" },
-    { action: "Request mapping updated", dept: "HR", time: "2 hours ago", status: "completed" },
+  const personnelCards = [
+    {
+      label: "Total Personnel",
+      value: stats?.totalPersonnel ?? 0,
+      icon: UserCog,
+      iconBg: "bg-primary/10",
+      iconColor: "text-primary",
+    },
+    {
+      label: "HODs",
+      value: stats?.hodCount ?? 0,
+      icon: ShieldCheck,
+      iconBg: "bg-amber-100",
+      iconColor: "text-amber-600",
+    },
+    {
+      label: "Technicians",
+      value: stats?.technicianCount ?? 0,
+      icon: Wrench,
+      iconBg: "bg-blue-100",
+      iconColor: "text-blue-600",
+    },
+    {
+      label: "Total Requests",
+      value: stats?.totalRequests ?? 0,
+      icon: FileText,
+      iconBg: "bg-rose-100",
+      iconColor: "text-rose-600",
+    },
   ];
 
   return (
     <div className="space-y-8">
-      {/* Header Section */}
-      <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold tracking-tight">
-            System <span className="text-primary">Overview</span>
-          </h1>
-          <p className="text-muted-foreground">
-            Welcome back, Admin. Here&apos;s what&apos;s happening today.
-          </p>
+      {/* Header */}
+      <div className="space-y-1">
+        <h1 className="text-3xl font-bold tracking-tight">
+          System <span className="text-primary">Overview</span>
+        </h1>
+        <p className="text-muted-foreground">
+          Welcome back, Admin. Here&apos;s your system at a glance.
+        </p>
+      </div>
+
+      {/* Error Banner */}
+      {error && (
+        <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 p-3 text-sm font-medium text-destructive">
+          <AlertCircle className="h-4 w-4 shrink-0" />
+          {error}
+          <button onClick={() => setError("")} className="ml-auto text-xs underline">Dismiss</button>
         </div>
-        <Button className="gap-2 shadow-lg shadow-primary/25">
-          <TrendingUp className="h-4 w-4" />
-          Generate Report
-        </Button>
-      </div>
+      )}
 
-      {/* Stats Grid */}
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {systemStats.map((stat, i) => (
-          <Card key={i} className="group relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
-            <div className={`absolute inset-0 bg-gradient-to-br ${stat.gradient} opacity-0 transition-opacity duration-300 group-hover:opacity-5`} />
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-sm font-medium text-muted-foreground">
-                {stat.label}
-              </CardTitle>
-              <div className={`rounded-lg ${stat.bgLight} p-2 transition-transform duration-300 group-hover:scale-110`}>
-                <stat.icon className={`h-4 w-4 bg-gradient-to-br ${stat.gradient} bg-clip-text text-transparent`} style={{ color: 'transparent', backgroundClip: 'text', WebkitBackgroundClip: 'text', background: `linear-gradient(to bottom right, var(--tw-gradient-stops))` }} />
-                <stat.icon className={`h-4 w-4 text-primary`} />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{stat.value}</div>
-              <div className="mt-1 flex items-center gap-1">
-                <Badge variant="secondary" className="text-xs font-medium">
-                  {stat.change}
-                </Badge>
-              </div>
-            </CardContent>
-          </Card>
-        ))}
-      </div>
+      {/* Loading */}
+      {loading && (
+        <div className="flex items-center justify-center py-16">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      )}
 
-      {/* Welcome Banner */}
-      <Card className="overflow-hidden border-0 bg-gradient-to-br from-primary via-primary to-violet-700 text-primary-foreground shadow-xl shadow-primary/20">
-        <CardContent className="relative p-8">
-          {/* Decorative Elements */}
-          <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-white/10 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-32 -left-32 h-64 w-64 rounded-full bg-white/5 blur-3xl" />
-
-          <div className="relative z-10 max-w-xl space-y-4">
-            <h2 className="text-2xl font-bold md:text-3xl">
-              Welcome back, Super Admin! 👋
-            </h2>
-            <p className="text-primary-foreground/80">
-              Everything is running smoothly. There are <span className="font-semibold text-white">4 new department requests</span> and <span className="font-semibold text-white">2 service updates</span> pending your review.
-            </p>
-            <Button
-              variant="secondary"
-              className="mt-4 gap-2 bg-white text-primary hover:bg-white/90"
-            >
-              View Requests
-              <ArrowUpRight className="h-4 w-4" />
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <div>
-              <CardTitle>Recent Activity</CardTitle>
-              <CardDescription>Latest system changes and updates</CardDescription>
-            </div>
-            <Button variant="outline" size="sm">View All</Button>
-          </div>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {recentActivity.map((item, i) => (
-              <div
-                key={i}
-                className="flex items-center gap-4 rounded-lg border bg-card p-4 transition-colors hover:bg-muted/50"
-              >
-                <div className={`flex h-10 w-10 items-center justify-center rounded-full ${item.status === 'completed' ? 'bg-emerald-100 text-emerald-600' : 'bg-amber-100 text-amber-600'
-                  }`}>
-                  {item.status === 'completed' ? (
-                    <CheckCircle2 className="h-5 w-5" />
-                  ) : (
-                    <Clock className="h-5 w-5" />
-                  )}
-                </div>
-                <div className="flex-1 space-y-1">
-                  <p className="text-sm font-medium">{item.action}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {item.dept} • {item.time}
-                  </p>
-                </div>
-                <Badge variant={item.status === 'completed' ? 'default' : 'secondary'}>
-                  {item.status}
-                </Badge>
-              </div>
+      {!loading && stats && (
+        <>
+          {/* Main Stats */}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            {statCards.map((stat, i) => (
+              <Card key={i} className="group transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
+                <CardContent className="flex items-center gap-4 p-6">
+                  <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.iconBg} transition-transform duration-300 group-hover:scale-110`}>
+                    <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                    <div className="text-2xl font-bold">{stat.value}</div>
+                    {stat.subtitle && (
+                      <p className="text-xs text-muted-foreground">{stat.subtitle}</p>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
             ))}
           </div>
-        </CardContent>
-      </Card>
+
+          {/* Personnel & Request Stats */}
+          <div>
+            <h2 className="mb-4 text-lg font-semibold">Personnel & Requests</h2>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {personnelCards.map((stat, i) => (
+                <Card key={i} className="group transition-all duration-300 hover:shadow-lg hover:shadow-primary/5">
+                  <CardContent className="flex items-center gap-4 p-6">
+                    <div className={`flex h-12 w-12 items-center justify-center rounded-xl ${stat.iconBg} transition-transform duration-300 group-hover:scale-110`}>
+                      <stat.icon className={`h-6 w-6 ${stat.iconColor}`} />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">{stat.label}</p>
+                      <div className="text-2xl font-bold">{stat.value}</div>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </div>
+
+          {/* Requests by Status */}
+          {stats.requestsByStatus.length > 0 && (
+            <div>
+              <h2 className="mb-4 text-lg font-semibold">Requests by Status</h2>
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {stats.requestsByStatus.map((item, i) => (
+                  <Card key={i} className="transition-all duration-300 hover:shadow-md">
+                    <CardContent className="flex items-center justify-between p-6">
+                      <div className="flex items-center gap-3">
+                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-muted">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div>
+                          <p className="font-medium">{item.statusName}</p>
+                        </div>
+                      </div>
+                      <div className="text-2xl font-bold">{item.count}</div>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          )}
+        </>
+      )}
     </div>
   );
 }

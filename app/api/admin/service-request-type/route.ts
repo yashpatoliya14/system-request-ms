@@ -7,7 +7,7 @@ interface IServiceRequestTypeBody {
     ServiceTypeID: string;
     ServiceDept:string;
     ServiceRequestTypeName:string;
-    DefaultPriority:number;
+    DefaultPriority:string;
     IsActive:boolean;    
 }
 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
                 RequestTypeName:ServiceRequestTypeName,
                 ServiceTypeID:BigInt(ServiceTypeID),
                 ServiceDeptID:BigInt(ServiceDeptID),
-                DefaultPriority,
+                DefaultPriority: DefaultPriority.toUpperCase(),
                 IsActive:IsActive,
             }
         })

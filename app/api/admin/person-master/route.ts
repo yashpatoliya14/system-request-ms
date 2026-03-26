@@ -1,6 +1,6 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
-
+import bcrypt from "bcryptjs";
 //types
 
 interface IPersonMasterBody {
@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     try {
 
         const body = await req.json();
-        const { FullName, Email, Phone, Role, ServiceDeptID } = body;
+        const { FullName, Email, Phone, Role, ServiceDeptID,Password } = body;
 
         let user = await prisma.users.findFirst({
             where: {
@@ -46,6 +46,7 @@ export async function POST(req: NextRequest) {
                     Phone,
                     IsVerified: true,
                     Role: Role,
+                    Password: bcrypt.hashSync(Password, 10),
                 }
             })
             if(!user){
@@ -77,17 +78,26 @@ export async function POST(req: NextRequest) {
 // get all Person master
 export async function GET(req: NextRequest) {
     try {
+        const role = req.nextUrl.searchParams.get("role");
 
         //get the Persons Master Data
         const users = await prisma.serviceDeptPerson.findMany({
             include: {
                 ServiceDepartment: true,
-                Users:true
+                Users:true,
+
             },
             where: {
-                IsActive: true
+                IsActive: true,
+                ...(role && {
+                    Users: {
+                        Role: role
+                    }
+                })
             }
         })
+        console.log(users);
+        
         if (users) {
             return NextResponse.json({ success: true, message: "Get All Person Masters Successfull", data: users ? users : [] } as IPersonMasterResponse, { status: 200 });
         } else {

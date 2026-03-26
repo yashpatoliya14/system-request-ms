@@ -17,6 +17,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
@@ -49,7 +56,7 @@ interface ServiceRequest {
   AssignedToID: string | null;
   Users?: { FullName: string } | null;
   ServiceRequestType?: { RequestTypeName: string } | null;
-  ServiceRequestStatus?: { ServiceRequestStatusName: string; ServiceRequestStatusCssClass: string } | null;
+  ServiceRequestStatus?: { ServiceRequestStatusName: string; ServiceRequestStatusCssClass: string; IsTerminal?: boolean | null; IsDefault?: boolean | null; IsAssigned?: boolean | null } | null;
 }
 
 interface DeptPerson {
@@ -65,13 +72,16 @@ interface ServiceRequestStatus {
   ServiceRequestStatusID: string;
   ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
+  IsTerminal?: boolean | null;
+  IsDefault?: boolean | null;
+  IsAssigned?: boolean | null;
 }
 
 export default function HODDashboard() {
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
   const [technicians, setTechnicians] = useState<DeptPerson[]>([]);
   const [loading, setLoading] = useState(true);
-  const [assigning, setAssigning] = useState(false);
+  const [assigning, setAssigning] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -113,7 +123,7 @@ export default function HODDashboard() {
   // ---- Fetch all personnel (technicians) ----
   const fetchTechnicians = async () => {
     try {
-      const res = await apiClient.get<DeptPerson[]>("/api/admin/person-master");
+      const res = await apiClient.get<DeptPerson[]>("/api/hod/technicians");
       if (res.success && res.data) {
         setTechnicians(res.data);
       }
@@ -131,18 +141,22 @@ export default function HODDashboard() {
   // ---- Assign technician to request ----
   const handleAssign = async (deptPersonId: string) => {
     if (!selectedRequest) return;
-    setAssigning(true);
+    setAssigning(deptPersonId);
     try {
       const res = await apiClient.post("/api/hod", {
         ServiceRequestID: selectedRequest.ServiceRequestID,
         AssignedToID: deptPersonId,
       });
       if (res.success) {
+        // Find the assigned status dynamically
+        const assignedStatus = statuses.find(s => s.IsAssigned === true);
+        const assignedStatusId = assignedStatus ? String(assignedStatus.ServiceRequestStatusID) : selectedRequest.StatusID || "3";
+
         // Update local state
         setRequests((prev) =>
           prev.map((req) =>
             String(req.ServiceRequestID) === String(selectedRequest.ServiceRequestID)
-              ? { ...req, AssignedToID: deptPersonId, StatusID: "3" }
+              ? { ...req, AssignedToID: deptPersonId, StatusID: assignedStatusId }
               : req
           )
         );
@@ -154,7 +168,7 @@ export default function HODDashboard() {
     } catch (err) {
       console.error("Failed to assign technician:", err);
     } finally {
-      setAssigning(false);
+      setAssigning(null);
     }
   };
 
@@ -168,14 +182,7 @@ export default function HODDashboard() {
     return "Pending";
   };
 
-  const getPriorityLabel = (priority: string | null) => {
-    if (!priority) return "Low";
-    const p = Number(priority);
-    if (p >= 4) return "Urgent";
-    if (p === 3) return "High";
-    if (p === 2) return "Medium";
-    return "Low";
-  };
+  
 
   const isUnassigned = (req: ServiceRequest) => !req.AssignedToID;
 
@@ -195,18 +202,30 @@ export default function HODDashboard() {
       String(r.ServiceRequestID).includes(q) ||
       r.Users?.FullName?.toLowerCase().includes(q);
 
-    // Status filter
+    // Status filter — use the embedded status name from the request object
+    const requestStatusName = r.ServiceRequestStatus?.ServiceRequestStatusName || getStatusLabel(r.StatusID);
     const matchesStatus =
         statusFilter === "all" ||
-        getStatusLabel(r.StatusID) === statusFilter;
+        requestStatusName === statusFilter;
 
     return matchesSearch && matchesStatus;
   });
 
   // Stats
+  const isTerminal = (req: ServiceRequest) => {
+    // Check embedded status first
+    if (req.ServiceRequestStatus?.IsTerminal === true) return true;
+    // Fallback: look up in the separately-fetched statuses array
+    if (req.StatusID) {
+      const s = statuses.find(st => String(st.ServiceRequestStatusID) === String(req.StatusID));
+      if (s?.IsTerminal === true) return true;
+    }
+    return false;
+  };
+
   const unassignedCount = requests.filter((r) => isUnassigned(r)).length;
-  const assignedCount = requests.filter((r) => !isUnassigned(r) && getStatusLabel(r.StatusID) !== "Completed").length;
-  const completedCount = requests.filter((r) => getStatusLabel(r.StatusID) === "Completed").length;
+  const assignedCount = requests.filter((r) => !isUnassigned(r) && !isTerminal(r)).length;
+  const completedCount = requests.filter((r) => isTerminal(r)).length;
 
   const stats = [
     {
@@ -296,25 +315,19 @@ export default function HODDashboard() {
                   onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <select 
-                className="flex h-10 items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 w-full sm:w-36"
-                value={statusFilter} 
-                onChange={(e) => setStatusFilter(e.target.value)}
-              >
-                <option value="all">All Statuses</option>
-                {statuses.map(s => (
-                  <option key={s.ServiceRequestStatusID} value={s.ServiceRequestStatusName}>
-                    {s.ServiceRequestStatusName}
-                  </option>
-                ))}
-                {statuses.length === 0 && (
-                  <>
-                    <option value="Pending">Pending</option>
-                    <option value="In Progress">In Progress</option>
-                    <option value="Completed">Completed</option>
-                  </>
-                )}
-              </select>
+              <Select value={statusFilter} onValueChange={setStatusFilter}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="All Statuses" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All Statuses</SelectItem>
+                  {statuses.map(s => (
+                    <SelectItem key={s.ServiceRequestStatusID} value={s.ServiceRequestStatusName}>
+                      {s.ServiceRequestStatusName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
           </div>
         </CardHeader>
@@ -344,8 +357,6 @@ export default function HODDashboard() {
               <TableBody>
                 {filteredRequests.map((req) => {
                   const techName = getTechName(req.AssignedToID);
-                  const priority = getPriorityLabel(req.Priority);
-                  const status = getStatusLabel(req.StatusID);
                   return (
                     <TableRow key={String(req.ServiceRequestID)} className="group">
                       <TableCell>
@@ -365,16 +376,16 @@ export default function HODDashboard() {
                       <TableCell>
                         <Badge
                           className={
-                            priority === "Urgent"
+                            req.Priority === "Urgent"
                               ? "bg-rose-500 text-white hover:bg-rose-500"
-                              : priority === "High"
+                              : req.Priority === "High"
                               ? "bg-rose-100 text-rose-700 hover:bg-rose-100"
-                              : priority === "Medium"
+                              : req.Priority === "Medium"
                               ? "bg-amber-100 text-amber-700 hover:bg-amber-100"
                               : "bg-slate-100 text-slate-700 hover:bg-slate-100"
                           }
                         >
-                          {priority}
+                          {req.Priority.toLowerCase()}
                         </Badge>
                       </TableCell>
                       <TableCell>
@@ -395,48 +406,19 @@ export default function HODDashboard() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {isUnassigned(req) ? (
-                          status?.toLowerCase() !== "completed" ? (
-                            <Button
-                              size="sm"
-                              className="gap-1"
-                              onClick={() => {
-                                setSelectedRequest(req);
-                                setIsAssignModalOpen(true);
-                              }}
-                            >
-                              <UserPlus className="h-3 w-3" />
-                              Assign
-                            </Button>
-                          ) : (
-                            <Button asChild variant="ghost" size="icon" className="opacity-50 group-hover:opacity-100">
-                              <Link href={`/request-details/${req.ServiceRequestID}`}>
-                                <ArrowUpRight className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          )
-                        ) : (
-                          <div className="flex items-center justify-end gap-2">
-                            {status?.toLowerCase() !== "completed" && String(req.StatusID) !== "4" && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="gap-1"
-                                onClick={() => {
-                                  setSelectedRequest(req);
-                                  setIsAssignModalOpen(true);
-                                }}
-                              >
-                                <UserCheck className="h-3 w-3" />
-                                Reassign
-                              </Button>
-                            )}
-                            <Button asChild variant="ghost" size="icon" className="opacity-50 group-hover:opacity-100">
-                              <Link href={`/request-details/${req.ServiceRequestID}`}>
-                                <ArrowUpRight className="h-4 w-4" />
-                              </Link>
-                            </Button>
-                          </div>
+                        {!isTerminal(req) && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setIsAssignModalOpen(true);
+                            }}
+                          >
+                            <UserCheck className="h-3 w-3" />
+                            Reassign
+                          </Button>
                         )}
                       </TableCell>
                     </TableRow>
@@ -475,7 +457,7 @@ export default function HODDashboard() {
                 <button
                   key={String(tech.DeptPersonID)}
                   onClick={() => handleAssign(String(tech.DeptPersonID))}
-                  disabled={assigning}
+                  disabled={assigning !== null}
                   className="group flex w-full items-center justify-between rounded-xl border bg-muted/30 p-4 transition-all hover:border-primary hover:bg-primary/5 hover:shadow-md disabled:opacity-50"
                 >
                   <div className="flex items-center gap-4">
@@ -491,7 +473,7 @@ export default function HODDashboard() {
                       </p>
                     </div>
                   </div>
-                  {assigning ? (
+                  {assigning === String(tech.DeptPersonID) ? (
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   ) : (
                     <UserPlus className="h-5 w-5 text-muted-foreground transition-colors group-hover:text-primary" />

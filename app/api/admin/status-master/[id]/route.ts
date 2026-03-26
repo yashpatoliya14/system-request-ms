@@ -42,6 +42,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
             Description,
             ServiceRequestStatusCssClass,
             IsAllowedForTechnician,
+            IsDefault,
+            IsAssigned,
+            IsTerminal,
         } = body;
 
         const status = await prisma.serviceRequestStatus.update({
@@ -52,6 +55,9 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
                 Description,
                 ServiceRequestStatusCssClass,
                 IsAllowedForTechnician,
+                IsDefault,
+                IsAssigned,
+                IsTerminal,
                 Modified: new Date(),
             },
         });

@@ -137,9 +137,12 @@ export default function DepartmentMaster() {
         setDeleteOpen(false);
         fetchDepartments();
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      setError("Failed to delete department");
+      // Show the API error message (e.g. "Cannot delete — department is in use")
+      const message = err?.data?.message || err?.message || "Failed to delete department";
+      setError(message);
+      setDeleteOpen(false);
     } finally {
       setDeleting(false);
     }

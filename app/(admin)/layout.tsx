@@ -18,7 +18,6 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       // Redirect non-admin users to their dashboard
       const dashboardMap: Record<string, string> = {
         hod: "/hod-dashboard",
-        user: "/portal-dashboard",
       };
       router.replace(dashboardMap[role ?? ""] || "/login");
     }

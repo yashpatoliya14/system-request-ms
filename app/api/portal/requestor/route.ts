@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
 
         const body = await req.json();
         const { ServiceRequestTypeID, RequestorID, Title, Description, Priority } = body;
-
+        const normalizePriority = Priority.toString().toUpperCase();
         // check if auto-assignment mapping exists for this request type
         const mapping = await prisma.serviceRequestTypeWisePerson.findFirst({
             where: {
@@ -34,8 +34,15 @@ export async function POST(req: NextRequest) {
         });
 
         const assignedToID = mapping ? mapping.ServicePersonID : null;
-        // set status to 3 (In Progress) if mapped, otherwise 1 (Pending)
-        const statusID = assignedToID ? 3 : 1;
+
+        // Dynamically find the default and assigned statuses
+        const [defaultStatus, assignedStatus] = await Promise.all([
+            prisma.serviceRequestStatus.findFirst({ where: { IsDefault: true } }),
+            prisma.serviceRequestStatus.findFirst({ where: { IsAssigned: true } }),
+        ]);
+        const statusID = assignedToID
+            ? (assignedStatus?.ServiceRequestStatusID)
+            : (defaultStatus?.ServiceRequestStatusID);
 
         //create a requestor
         const requestor = await prisma.serviceRequest.create({
@@ -44,7 +51,7 @@ export async function POST(req: NextRequest) {
                 RequestorID:BigInt(RequestorID),
                 Title:Title,
                 Description:Description,
-                Priority:Priority,
+                Priority:normalizePriority,
                 StatusID:statusID,
                 AssignedToID:assignedToID,
             }

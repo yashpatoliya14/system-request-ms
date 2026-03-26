@@ -53,20 +53,6 @@ export default function LoginPage() {
       }
       return { errors: fieldErrors, message: "Validation failed" };
     }
-    let needsPasswordReset = false;
-    try {
-      const res1 = await apiClient.get(`/api/auth/is_dept_person?email=${encodeURIComponent(result.data.email)}`);
-      if (res1.success) {
-        needsPasswordReset = true;
-      }
-    } catch (e) {
-      console.log("Normal login flow routing:", e instanceof Error ? e.message : e);
-    }
-
-    if (needsPasswordReset) {
-      router.replace("/reset-password")
-      return { errors: {}, message: "" };
-    }
     
     try {
       const res = await apiClient.post("/api/auth/login", { Email: result.data.email, Password: result.data.password });

@@ -62,6 +62,7 @@ interface Form {
   FullName: string;
   Email: string;
   Phone: string;
+  Password: string;
   Role: string;
   ServiceDeptID: string;
 }
@@ -70,6 +71,7 @@ interface Form {
 // intial states
 const emptyForm: Form = {
   FullName: "",
+  Password: "",
   Email: "",
   Phone: "",
   Role: "hod",
@@ -120,6 +122,15 @@ export default function DeptPersonMapping() {
                     placeholder="e.g., vijay@company.com"
                     value={form.Email}
                     onChange={(e) => setForm({ ...form, Email: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label>Password</Label>
+                  <Input
+                    type="password"
+                    placeholder="Enter Password"
+                    value={form.Password}
+                    onChange={(e) => setForm({ ...form, Password: e.target.value })}
                   />
                 </div>
               </div>
@@ -195,6 +206,7 @@ export default function DeptPersonMapping() {
       const res = await apiClient.post("/api/admin/person-master", {
         FullName: createForm.FullName.trim(),
         Email: createForm.Email.trim(),
+        Password:createForm.Password,
         Phone: createForm.Phone.trim(),
         Role: createForm.Role,
         ServiceDeptID: createForm.ServiceDeptID,
@@ -247,25 +259,13 @@ export default function DeptPersonMapping() {
         setDeleteOpen(false);
         fetchAll();
       }
-    } catch (err) {
+    } catch (err:any) {
       console.error(err);
-      setError("Failed to remove personnel");
+      setError(err.message.toString());
     } finally {
       setDeleting(false);
       setDeleteOpen(false);
     }
-  };
-
-  const openEdit = (item: PersonMaster) => {
-    setEditItem(item);
-    setEditForm({
-      ServiceDeptID: item.ServiceDeptID?.toString() ?? "",
-      Role: item.Users?.Role?.toLowerCase() ?? "user",
-      FullName: item.Users?.FullName ?? "",
-      Email: item.Users?.Email ?? "",
-      Phone: item.Users?.Phone ?? "",
-    });
-    setEditOpen(true);
   };
 
   const openDelete = (item: PersonMaster) => {
@@ -514,7 +514,15 @@ export default function DeptPersonMapping() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8 text-muted-foreground hover:text-primary hover:bg-primary/10"
-                          onClick={() => openEdit(item)}
+                          onClick={() => {
+                            setEditItem(item);
+                            setEditForm({
+                              ...emptyForm,
+                              Role: item.Users?.Role?.toLowerCase() || "hod",
+                              ServiceDeptID: item.ServiceDeptID?.toString() || "",
+                            });
+                            setEditOpen(true);
+                          }}
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
@@ -536,29 +544,6 @@ export default function DeptPersonMapping() {
         </Card>
       )}
 
-      {/* Edit Dialog */}
-      <Dialog open={editOpen} onOpenChange={setEditOpen}>
-        <DialogContent className="sm:max-w-[450px]">
-          <DialogHeader>
-            <DialogTitle>Edit Personnel</DialogTitle>
-            <DialogDescription>
-              Update department and role for <strong>{editItem?.Users?.FullName}</strong>.
-            </DialogDescription>
-          </DialogHeader>
-         {renderFormFields(editForm, setEditForm)}
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
-            <Button onClick={handleUpdate} disabled={editing || !editForm.ServiceDeptID || !editForm.Role}>
-              {editing ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
-              ) : (
-                "Save Changes"
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
       {/* Delete Dialog */}
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent>
@@ -575,6 +560,60 @@ export default function DeptPersonMapping() {
                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Removing...</>
               ) : (
                 "Remove"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Personnel</DialogTitle>
+            <DialogDescription>
+              Update role and department for <strong>{editItem?.Users?.FullName}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="space-y-2">
+              <Label>Role</Label>
+              <Select value={editForm.Role} onValueChange={(v) => setEditForm({ ...editForm, Role: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select role..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="hod">HOD</SelectItem>
+                  <SelectItem value="technician">Technician</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Department</Label>
+              <Select value={editForm.ServiceDeptID} onValueChange={(v) => setEditForm({ ...editForm, ServiceDeptID: v })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select department..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {departments.map((d) => (
+                    <SelectItem key={d.ServiceDeptID} value={d.ServiceDeptID.toString()}>
+                      {d.DeptName}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
+            <Button
+              onClick={handleUpdate}
+              disabled={editing || !editForm.Role || !editForm.ServiceDeptID}
+            >
+              {editing ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" />Saving...</>
+              ) : (
+                "Save Changes"
               )}
             </Button>
           </DialogFooter>

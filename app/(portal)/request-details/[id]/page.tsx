@@ -29,6 +29,8 @@ interface ServiceRequest {
   ServiceRequestStatus?: {
     ServiceRequestStatusName: string;
     ServiceRequestStatusCssClass: string;
+    IsTerminal?: boolean | null;
+    IsDefault?: boolean | null;
   } | null;
   ServiceDeptPerson?: {
     Users?: {
@@ -41,6 +43,8 @@ interface ServiceRequestStatus {
   ServiceRequestStatusID: number;
   ServiceRequestStatusName: string;
   ServiceRequestStatusCssClass: string;
+  IsTerminal?: boolean | null;
+  IsDefault?: boolean | null;
 }
 
 interface Reply {
@@ -202,12 +206,7 @@ export default function RequestDetails({ params }: PageProps) {
     const id = Number(statusId);
     const status = statuses.find(s => s.ServiceRequestStatusID === id);
     if (status && status.ServiceRequestStatusCssClass) return status.ServiceRequestStatusCssClass;
-    
-    // Fallback classes if dynamic is missing
-    const label = getStatusLabel(statusId);
-    if (label === "Completed") return "bg-emerald-50 text-emerald-600 border-emerald-100";
-    if (label === "In Progress") return "bg-blue-50 text-blue-600 border-blue-100";
-    return "bg-amber-50 text-amber-600 border-amber-100";
+    return "bg-slate-100 text-slate-700 hover:bg-slate-100";
   };
 
   useEffect(() => {
@@ -467,7 +466,7 @@ export default function RequestDetails({ params }: PageProps) {
                 
                 {user?.role?.toLowerCase() === "hod" ? (
                   <Select
-                    disabled={assigning || getStatusLabel(request.StatusID) === "Completed" || String(request.StatusID) === "4"}
+                    disabled={assigning || request.ServiceRequestStatus?.IsTerminal === true}
                     value={request.AssignedToID ? String(request.AssignedToID) : ""}
                     onValueChange={handleAssign}
                   >

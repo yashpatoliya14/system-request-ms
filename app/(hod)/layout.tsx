@@ -12,9 +12,10 @@ export default function HODLayout({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const role = getCookie("user_role")?.toLowerCase();
-    // Admin and HOD can access HOD panel
-    if (role === "admin" || role === "hod") {
+    // HOD can access HOD dashboard
+    if (role === "hod") {
       setAuthorized(true);
+      
     } else {
       const dashboardMap: Record<string, string> = {
         user: "/portal-dashboard",

@@ -5,7 +5,7 @@ interface IServiceRequestTypeBody {
     ServiceTypeID: string;
     ServiceDept:string;
     ServiceRequestTypeName:string;
-    DefaultPriority:number;
+    DefaultPriority:string;
     IsActive:boolean;    
 }
 
@@ -52,7 +52,7 @@ export async function PATCH(req: NextRequest, { params }: { params: Promise<{ id
         const serviceRequestType = await prisma.serviceRequestType.update({
             data: {
                 RequestTypeName: RequestTypeName,
-                DefaultPriority:DefaultPriority,
+                DefaultPriority:DefaultPriority.toUpperCase(),
                 IsActive:IsActive,
                 ServiceTypeID:BigInt(ServiceTypeID),
                 ServiceDeptID:BigInt(ServiceDeptID),

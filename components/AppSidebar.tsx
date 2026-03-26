@@ -35,12 +35,6 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { apiClient } from "@/lib/apiClient";
 import { getCookie } from "@/lib/cookie";
 
-interface NavItem {
-    name: string;
-    icon: React.ReactNode;
-    href: string;
-}
-
 interface SidebarProps {
     variant: "admin" | "portal" | "hod";
 }
@@ -67,11 +61,6 @@ const sidebarConfigs = {
             { name: "Service Types", icon: <Settings2 className="h-4 w-4" />, href: "/service-type" },
             { name: "Status Master", icon: <Fingerprint className="h-4 w-4" />, href: "/status-master" },
             { name: "Type Mapping", icon: <Map className="h-4 w-4" />, href: "/type-mapping" },
-        ],
-        otherLinksLabel: "Other Dashboards",
-        otherLinks: [
-            { name: "HOD Dashboard", icon: <Users className="h-4 w-4" />, href: "/hod-dashboard" },
-            { name: "Portal Dashboard", icon: <Zap className="h-4 w-4" />, href: "/portal-dashboard" },
         ]
     },
     portal: {
@@ -83,9 +72,7 @@ const sidebarConfigs = {
             { name: "Operations Hub", icon: <Zap className="h-4 w-4" />, href: "/portal-dashboard" },
             { name: "Technician View", icon: <Briefcase className="h-4 w-4" />, href: "/technician" },
             { name: "Request Details", icon: <History className="h-4 w-4" />, href: "/request-details" },
-        ],
-        otherLinksLabel: null,
-        otherLinks: []
+        ]
     },
     hod: {
         title: "Dept",
@@ -94,10 +81,6 @@ const sidebarConfigs = {
         menuLabel: "Management",
         items: [
             { name: "Department Dashboard", icon: <LayoutDashboard className="h-4 w-4" />, href: "/hod-dashboard" },
-        ],
-        otherLinksLabel: "Other Dashboards",
-        otherLinks: [
-            { name: "Portal Dashboard", icon: <Zap className="h-4 w-4" />, href: "/portal-dashboard" },
         ]
     },
 };
@@ -116,11 +99,11 @@ export default function AppSidebar({ variant }: SidebarProps) {
     // Filter items based on role — only technicians see "Technician View"
     const filteredItems = variant === "portal"
         ? config.items.filter((item) => {
-            if (item.href === "/technician") return role === "technician";
+            if(role === "technician") return item.href === "/technician";
+            if(role=== "user") return item.href === "/portal-dashboard" || item.href === "/request-details";
             return true;
         })
         : config.items;
-
     const [user, setUser] = useState<UserInfo | null>(null);
     const [loggingOut, setLoggingOut] = useState(false);
 
@@ -244,53 +227,7 @@ export default function AppSidebar({ variant }: SidebarProps) {
                         })}
                     </nav>
 
-                    {config.otherLinks && config.otherLinks.length > 0 && (
-                        <>
-                            <div className="mt-8 mb-4 px-3">
-                                <span className="text-[10px] font-semibold uppercase tracking-widest text-sidebar-foreground/40">
-                                    {config.otherLinksLabel}
-                                </span>
-                            </div>
-                            <nav className="space-y-1">
-                                {config.otherLinks.map((item) => {
-                                    const isActive = pathname === item.href;
-                                    return (
-                                        <Tooltip key={item.href}>
-                                            <TooltipTrigger asChild>
-                                                <Link
-                                                    href={item.href}
-                                                    className={cn(
-                                                        "group flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-all duration-200",
-                                                        isActive
-                                                            ? "bg-primary text-primary-foreground shadow-md shadow-primary/20"
-                                                            : "text-sidebar-foreground/70 hover:bg-sidebar-accent hover:text-sidebar-foreground"
-                                                    )}
-                                                >
-                                                    <span
-                                                        className={cn(
-                                                            "flex h-8 w-8 items-center justify-center rounded-lg transition-colors",
-                                                            isActive
-                                                                ? "bg-primary-foreground/20"
-                                                                : "bg-sidebar-accent group-hover:bg-sidebar-foreground/10"
-                                                        )}
-                                                    >
-                                                        {item.icon}
-                                                    </span>
-                                                    <span className="flex-1">{item.name}</span>
-                                                    {isActive && (
-                                                        <ChevronRight className="h-4 w-4 opacity-60" />
-                                                    )}
-                                                </Link>
-                                            </TooltipTrigger>
-                                            <TooltipContent side="right" className="font-medium">
-                                                {item.name}
-                                            </TooltipContent>
-                                        </Tooltip>
-                                    );
-                                })}
-                            </nav>
-                        </>
-                    )}
+                    
                 </ScrollArea>
 
                 <Separator className="bg-sidebar-border" />
