@@ -46,10 +46,7 @@ export async function POST(req: NextRequest) {
         // Generate JWT token with role information
         const token = generateToken({
             userId: user.UserID.toString(),
-            email: user.Email || "",
             role: user.Role || "User",
-            fullName: user.FullName || "",
-            username: user.Username || ""
         });
 
         // Create response with token

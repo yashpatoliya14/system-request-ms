@@ -29,14 +29,17 @@ export async function GET(req: NextRequest) {
             prisma.serviceRequest.groupBy({
                 by: ["StatusID"],
                 _count: { ServiceRequestID: true },
+                orderBy: {
+                    StatusID: 'asc'
+                }
             }),
             prisma.serviceRequestStatus.findMany(),
         ]);
-        const requestsByStatus = statusCounts.map((sc) => {
-            const status = statuses.find((s) => s.ServiceRequestStatusID === sc.StatusID);
+        const requestsByStatus = statusCounts.map((sc: any) => {
+            const status = statuses.find((s: any) => s.ServiceRequestStatusID === sc.StatusID);
             return {
                 statusName: status?.ServiceRequestStatusName ?? "Unknown",
-                count: sc._count.ServiceRequestID,
+                count: sc._count?.ServiceRequestID ?? 0,
                 cssClass: status?.ServiceRequestStatusCssClass ?? "",
             };
         });

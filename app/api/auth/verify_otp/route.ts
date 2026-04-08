@@ -65,7 +65,6 @@ export async function POST(req: NextRequest) {
 
         const token = generateToken({
             userId: newUser.UserID.toString(),
-            email: newUser.Email ?? "",
             role: newUser.Role ?? "user"
         });
 

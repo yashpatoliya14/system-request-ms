@@ -7,8 +7,8 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 });
 
-export async function DELETE(req:NextRequest,{params}: {params: {publicId: string}}) {
-    const { publicId } = await params;
+export async function DELETE(req:NextRequest,context: { params: Promise<{ publicId: string }> }) {
+    const { publicId } = await context.params;
     
     try{
         const result = await cloudinary.uploader.destroy(publicId);
