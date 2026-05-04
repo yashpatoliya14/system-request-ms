@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { apiClient } from "@/lib/apiClient";
+import { toast } from "react-hot-toast";
 import {  getStatusBadge } from "@/lib/statusServices";
 
 // ---- Types ----
@@ -70,10 +71,11 @@ export default function TechnicianDashboard() {
     const fetchUser = async () => {
       try {
         const res = await apiClient.get<UserInfo[]>("/api/auth/me");
-
+        
         if (res.success && res.data?.[0]) setUser(res.data[0] as unknown as UserInfo);
       } catch (err) {
         console.error("Failed to fetch user:", err);
+        toast.error("Failed to load user data");
       }
     };
     fetchUser();
@@ -97,23 +99,48 @@ export default function TechnicianDashboard() {
   const fetchRequests = async () => {
     if (!user) return;
     setLoading(true);
-    try {
-      
-      // Try fetching by technician's user ID
-      const res = await apiClient.get<ServiceRequest[][]>(
-        `/api/portal/technician/${user.UserID}`
-      );
-      if (res.success && res.data?.[0]) {
-        setRequests(res.data[0]);
-      } else {
+    
+    let retryCount = 0;
+    const maxRetries = 3;
+    
+    const attemptFetch = async () => {
+      try {
+        // Try fetching by technician's user ID
+        const res = await apiClient.get<ServiceRequest[][]>(
+          `/api/portal/technician/${user.UserID}`
+        );
+        
+        if (res.success && res.data?.[0]) {
+          setRequests(res.data[0]);
+          return true;
+        } else {
+          setRequests([]);
+          return false;
+        }
+      } catch (err) {
+        console.error("Failed to fetch technician requests:", err);
         setRequests([]);
+        return false;
       }
-    } catch (err) {
-      console.error("Failed to fetch technician requests:", err);
-      setRequests([]);
-    } finally {
-      setLoading(false);
+    };
+
+    // Retry logic with exponential backoff
+    let success = false;
+    while (retryCount < maxRetries) {
+      success = await attemptFetch();
+      if (success) break;
+      
+      retryCount++;
+      if (retryCount < maxRetries) {
+        await new Promise(resolve => setTimeout(resolve, 1000 * Math.pow(2, retryCount)));
+      }
     }
+    
+    if (!success) {
+      toast.error("Failed to load requests after multiple attempts");
+    }
+    
+    setLoading(false);
   };
 
   useEffect(() => {
@@ -212,7 +239,7 @@ export default function TechnicianDashboard() {
           <CardContent className="flex items-center gap-2 px-4 py-2">
             <Clock className="h-4 w-4 text-primary" />
             <span className="text-sm font-semibold">
-              {user?.fullName || "Technician"} — Active
+              {user?.FullName || "Technician"} — Active
             </span>
           </CardContent>
         </Card>
@@ -338,12 +365,11 @@ export default function TechnicianDashboard() {
                             ))}
                           </SelectContent>
                         </Select>
-                        <Button asChild variant="outline" className="w-full gap-2 text-primary hover:text-primary">
-                          <Link href={`/request-details/${task.ServiceRequestID}`}>
-                            <MessageCircle className="h-4 w-4" />
-                            Open Chat
-                          </Link>
-                        </Button>
+                        {priorityLabel === "High" && (
+                          <Badge className="bg-rose-100 text-rose-700 hover:bg-rose-100">
+                            High Priority
+                          </Badge>
+                        )}
                       </div>
                     </div>
                   </CardContent>

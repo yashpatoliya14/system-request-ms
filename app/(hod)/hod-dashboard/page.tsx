@@ -43,6 +43,7 @@ import {
 import { apiClient } from "@/lib/apiClient";
 import { getStatusBadge, getStatusLabel, StatusInfo } from "@/lib/statusServices";
 import Link from "next/link";
+import { toast } from "react-hot-toast";
 
 // ---- Types ----
 interface ServiceRequest {
@@ -74,6 +75,9 @@ export default function HODDashboard() {
   const [technicians, setTechnicians] = useState<DeptPerson[]>([]);
   const [loading, setLoading] = useState(true);
   const [assigning, setAssigning] = useState<string | null>(null);
+  const [isEvaluateModalOpen, setIsEvaluateModalOpen] = useState(false);
+  const [evaluating, setEvaluating] = useState<string | null>(null);
+  const [closedStatus, setClosedStatus] = useState("closed");
   const [searchQuery, setSearchQuery] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
 
@@ -161,6 +165,32 @@ export default function HODDashboard() {
       console.error("Failed to assign technician:", err);
     } finally {
       setAssigning(null);
+    }
+  };
+
+  const handleEvaluate = async (requestId: string) => {
+    setEvaluating(requestId);
+    try {
+      const evaluationNotes = (document.getElementById('evaluationNotes') as HTMLTextAreaElement)?.value;
+      
+      const res = await apiClient.post("/api/hod/evaluate", {
+        ServiceRequestID: requestId,
+        StatusID: closedStatus,
+        EvaluationNotes: evaluationNotes
+      });
+
+      if (res.success) {
+        toast.success("Request evaluated successfully!");
+        setIsEvaluateModalOpen(false);
+        fetchRequests(); // Refresh the requests list
+      } else {
+        toast.error(res.message || "Failed to evaluate request");
+      }
+    } catch (err) {
+      console.error("Evaluation error:", err);
+      toast.error("Evaluation failed");
+    } finally {
+      setEvaluating(null);
     }
   };
 
@@ -395,7 +425,20 @@ export default function HODDashboard() {
                         )}
                       </TableCell>
                       <TableCell className="text-right">
-                        {!isTerminal(req) && (
+                        {isTerminal(req) ? (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1"
+                            onClick={() => {
+                              setSelectedRequest(req);
+                              setIsEvaluateModalOpen(true);
+                            }}
+                          >
+                            <CheckCircle className="h-3 w-3" />
+                            Evaluate
+                          </Button>
+                        ) : (
                           <Button
                             size="sm"
                             variant="outline"
@@ -470,6 +513,59 @@ export default function HODDashboard() {
                 </button>
               ))
             )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Evaluation Modal */}
+      <Dialog open={isEvaluateModalOpen} onOpenChange={setIsEvaluateModalOpen}>
+        <DialogContent className="sm:max-w-[500px]">
+          <DialogHeader>
+            <DialogTitle className="text-xl">Evaluate Request</DialogTitle>
+            <DialogDescription>
+              Review and finalize this completed service request
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 py-4">
+            <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+              Request Details
+            </p>
+            <div className="space-y-2">
+              <p className="text-sm">
+                <strong>Ticket:</strong> SR-{selectedRequest ? String(selectedRequest.ServiceRequestID) : ""}
+              </p>
+              <p className="text-sm">
+                <strong>Title:</strong> {selectedRequest?.Title}
+              </p>
+              <p className="text-sm">
+                <strong>Requester:</strong> {selectedRequest?.Users?.FullName}
+              </p>
+            </div>
+            
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Evaluation Notes
+              </p>
+              <textarea
+                className="w-full h-20 p-2 border rounded-md text-sm"
+                placeholder="Add evaluation notes..."
+                id="evaluationNotes"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-xs font-semibold uppercase tracking-widest text-muted-foreground">
+                Final Status
+              </p>
+              <Select value={closedStatus} onValueChange={setClosedStatus}>
+                <SelectTrigger className="w-full">
+                  <SelectValue placeholder="Select final status" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="closed">Closed</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </DialogContent>
       </Dialog>

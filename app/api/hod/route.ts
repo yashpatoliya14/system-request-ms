@@ -85,7 +85,7 @@ export async function POST(req: NextRequest) {
 
 // Get All Requests  
 export async function GET(req: NextRequest) {
-    const userDetail:IUserDetail | null = getDetailsFromToken(req);
+    const userDetail = getDetailsFromToken(req);
     if(userDetail=== null){
         return NextResponse.json({ success: false, message: "Unauthorized", data: [] }, { status: 401 });
     }
