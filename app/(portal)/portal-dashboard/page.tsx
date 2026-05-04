@@ -91,7 +91,7 @@ interface RequestType {
 }
 
 interface UserInfo {
-  userId: string;
+  UserID: string;
   email: string;
   role: string;
   fullName: string;
@@ -196,7 +196,7 @@ export default function PortalDashboard() {
     try {
       const res = await apiClient.post("/api/portal/requestor", {
         ServiceRequestTypeID: formData.typeId,
-        RequestorID: user.userId,
+        RequestorID: user.UserID,
         Title: formData.subject,
         Description: formData.description,
         Priority: formData.priority,
