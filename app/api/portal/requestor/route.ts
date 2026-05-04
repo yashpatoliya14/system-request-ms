@@ -22,9 +22,18 @@ interface IRequestorResponse {
 // Create Requestor  
 export async function POST(req: NextRequest) {
     try {
-
         const body = await req.json();
-        const { ServiceRequestTypeID, RequestorID, Title, Description, Priority,ServiceDepartmentID } = body;
+        const { ServiceRequestTypeID, RequestorID, Title, Description, Priority, ServiceDepartmentID } = body;
+
+        // Validation
+        if (!ServiceRequestTypeID || !RequestorID || !Title || !Description || !Priority || !ServiceDepartmentID) {
+            return NextResponse.json({ 
+                success: false, 
+                message: "Missing required fields: ServiceRequestTypeID, RequestorID, Title, Description, Priority, ServiceDepartmentID", 
+                data: [] 
+            }, { status: 400 });
+        }
+
         const normalizePriority = Priority.toString().toUpperCase();
         // check if auto-assignment mapping exists for this request type
         const mapping = await prisma.serviceRequestTypeWisePerson.findFirst({
@@ -40,9 +49,30 @@ export async function POST(req: NextRequest) {
             prisma.serviceRequestStatus.findFirst({ where: { IsDefault: true } }),
             prisma.serviceRequestStatus.findFirst({ where: { IsAssigned: true } }),
         ]);
-        const statusID = assignedToID
-            ? (assignedStatus?.ServiceRequestStatusID)
-            : (defaultStatus?.ServiceRequestStatusID);
+
+        // Log for debugging
+        console.log('Request creation debug:', {
+            ServiceRequestTypeID,
+            assignedToID,
+            defaultStatus: defaultStatus?.ServiceRequestStatusName,
+            assignedStatus: assignedStatus?.ServiceRequestStatusName
+        });
+
+        // Set status based on assignment logic
+        let statusID: number | undefined;
+        if (assignedToID && assignedStatus) {
+            // If personnel is assigned, use "Assigned" status
+            statusID = assignedStatus.ServiceRequestStatusID;
+            console.log('Using assigned status:', assignedStatus.ServiceRequestStatusName);
+        } else if (defaultStatus) {
+            // If no assignment, use "Default" status (typically "In Progress" or "Pending")
+            statusID = defaultStatus.ServiceRequestStatusID;
+            console.log('Using default status:', defaultStatus.ServiceRequestStatusName);
+        } else {
+            // Fallback - create a default status if none exists
+            console.log('No status found, using fallback');
+            statusID = 1; // Assuming 1 is a fallback status ID
+        }
 
         //create a requestor
         const requestor = await prisma.serviceRequest.create({
@@ -58,9 +88,25 @@ export async function POST(req: NextRequest) {
             }
         })
         if (requestor) {
-            return NextResponse.json({ success: true, message: "Requestor Created Successfull", data: [requestor] } as IRequestorResponse, { status: 200 });
+            const statusName = assignedToID && assignedStatus 
+                ? assignedStatus.ServiceRequestStatusName 
+                : defaultStatus?.ServiceRequestStatusName || 'Unknown';
+            
+            const message = assignedToID 
+                ? `Request created and assigned to personnel. Status: ${statusName}`
+                : `Request created successfully. Status: ${statusName}`;
+                
+            return NextResponse.json({ 
+                success: true, 
+                message, 
+                data: [requestor],
+                metadata: {
+                    assignedTo: assignedToID ? 'Yes' : 'No',
+                    status: statusName
+                }
+            } as IRequestorResponse, { status: 200 });
         } else {
-            return NextResponse.json({ success: false, message: "Requestor Creation Failed", data: [] }, { status: 400 });
+            return NextResponse.json({ success: false, message: "Request Creation Failed", data: [] }, { status: 400 });
         }
     } catch (e) {
 
